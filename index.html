@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#0b0f14" />
+  <title>AppGym — Contador de Entrenamiento</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <!-- ============ HEADER ============ -->
+  <header class="app-header">
+    <div class="brand">
+      <span class="brand-mark" data-icon="dumbbell"></span>
+      <div class="brand-text">
+        <span class="brand-name">AppGym</span>
+        <span class="brand-tag">Contador de entrenamiento</span>
+      </div>
+    </div>
+
+    <nav class="tabbar" id="tabbar" role="tablist" aria-label="Navegación principal">
+      <button class="tab is-active" data-view="counter" role="tab" aria-selected="true">
+        <span data-icon="counter"></span><span class="tab-label">Contador</span>
+      </button>
+      <button class="tab" data-view="routines" role="tab" aria-selected="false">
+        <span data-icon="list"></span><span class="tab-label">Rutinas</span>
+      </button>
+      <button class="tab" data-view="timer" role="tab" aria-selected="false">
+        <span data-icon="timer"></span><span class="tab-label">Cronómetro</span>
+      </button>
+    </nav>
+
+    <div class="header-actions">
+      <button class="icon-btn" id="btnTheme" title="Cambiar modo día/noche" aria-label="Modo día/noche"></button>
+      <button class="icon-btn" id="btnFullscreen" title="Pantalla completa" aria-label="Pantalla completa"></button>
+      <button class="icon-btn" id="btnSound" title="Activar/desactivar sonido" aria-label="Sonido"></button>
+      <button class="icon-btn" id="btnHelp" title="Ayuda y atajos" aria-label="Ayuda">
+        <span data-icon="help"></span>
+      </button>
+    </div>
+  </header>
+
+  <!-- ============ MAIN ============ -->
+  <main class="app-main">
+
+    <!-- ===== VIEW: CONTADOR ===== -->
+    <section class="view is-active" id="view-counter" role="tabpanel">
+      <div class="counter-layout">
+
+        <!-- Rep counter -->
+        <article class="card counter-card" id="repCard">
+          <div class="card-head">
+            <span class="card-title" id="repTitle">Repeticiones</span>
+            <div class="head-actions">
+              <span class="chip chip-live"><i></i> Actual</span>
+              <button class="icon-btn icon-btn-sm" id="repConfig" aria-label="Configurar contador de repeticiones" title="Configurar">
+                <span data-icon="gear"></span>
+              </button>
+            </div>
+          </div>
+          <div class="counter-display" id="repDisplay" tabindex="0" title="Toca o pulsa Espacio para sumar">
+            <span class="counter-number" id="repNumber">0</span>
+          </div>
+          <div class="counter-controls">
+            <button class="btn btn-ghost btn-lg" id="repMinus" aria-label="Restar repetición">
+              <span data-icon="minus"></span>
+            </button>
+            <button class="btn btn-primary btn-xl" id="repPlus" aria-label="Sumar repetición">
+              <span data-icon="plus"></span>
+            </button>
+            <button class="btn btn-ghost btn-lg" id="repReset" aria-label="Reiniciar repeticiones">
+              <span data-icon="reset"></span>
+            </button>
+          </div>
+          <div class="counter-meta">
+            <span class="meta-hint">Espacio = +1 &nbsp;·&nbsp; − = -1 &nbsp;·&nbsp; R = reiniciar</span>
+          </div>
+        </article>
+
+        <!-- Set counter -->
+        <article class="card counter-card" id="setCard">
+          <div class="card-head">
+            <span class="card-title" id="setTitle">Series</span>
+            <div class="head-actions">
+              <span class="chip" id="setChip">Ilimitadas</span>
+              <button class="icon-btn icon-btn-sm" id="setConfig" aria-label="Configurar contador de series" title="Configurar">
+                <span data-icon="gear"></span>
+              </button>
+            </div>
+          </div>
+          <div class="counter-display" id="setDisplay">
+            <span class="counter-number accent" id="setNumber">0</span>
+          </div>
+          <div class="counter-controls">
+            <button class="btn btn-ghost btn-lg" id="setMinus" aria-label="Restar serie">
+              <span data-icon="minus"></span>
+            </button>
+            <button class="btn btn-primary btn-xl" id="setPlus" aria-label="Registrar serie">
+              <span data-icon="check"></span>
+            </button>
+            <button class="btn btn-ghost btn-lg" id="setReset" aria-label="Reiniciar series">
+              <span data-icon="reset"></span>
+            </button>
+          </div>
+          <div class="counter-meta">
+            <span class="meta-hint" id="setHint">Pulsa ✓ para guardar la serie (reps actuales)</span>
+          </div>
+        </article>
+      </div>
+
+      <!-- History -->
+      <article class="card history-card">
+        <div class="card-head">
+          <span class="card-title">Registro de series</span>
+          <button class="btn btn-ghost btn-sm" id="historyClear">
+            <span data-icon="trash"></span> Limpiar
+          </button>
+        </div>
+        <div class="history-body" id="historyList">
+          <div class="empty-state">
+            <span class="empty-icon" data-icon="clipboard"></span>
+            <p>Aquí verás cada serie que registres,<br />con sus repeticiones y la hora.</p>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <!-- ===== VIEW: RUTINAS ===== -->
+    <section class="view" id="view-routines" role="tabpanel">
+      <div class="view-toolbar">
+        <div class="segmented" id="routineFilter">
+          <button class="seg is-active" data-filter="all">Todas</button>
+          <button class="seg" data-filter="benchmark">Benchmark</button>
+          <button class="seg" data-filter="hero">Héroes</button>
+          <button class="seg" data-filter="custom">Mías</button>
+        </div>
+        <button class="btn btn-primary" id="btnNewRoutine">
+          <span data-icon="plus"></span> Nueva rutina
+        </button>
+      </div>
+
+      <div class="routine-grid" id="routineGrid"></div>
+    </section>
+
+    <!-- ===== VIEW: CRONÓMETRO ===== -->
+    <section class="view" id="view-timer" role="tabpanel">
+      <div class="timer-layout">
+        <article class="card timer-display-card">
+          <div class="segmented timer-modes" id="timerModes">
+            <button class="seg is-active" data-mode="stopwatch">Cronómetro</button>
+            <button class="seg" data-mode="countdown">Cuenta atrás</button>
+            <button class="seg" data-mode="amrap">AMRAP</button>
+            <button class="seg" data-mode="emom">EMOM</button>
+            <button class="seg" data-mode="tabata">Tabata</button>
+          </div>
+
+          <div class="timer-face" id="timerFace">
+            <span class="timer-time" id="timerTime">00:00</span>
+            <span class="timer-state" id="timerState">Listo</span>
+          </div>
+
+          <div class="timer-config" id="timerConfig"></div>
+
+          <div class="timer-controls">
+            <button class="btn btn-ghost btn-lg" id="timerReset" aria-label="Reiniciar">
+              <span data-icon="reset"></span>
+            </button>
+            <button class="btn btn-primary btn-xl" id="timerToggle" aria-label="Iniciar/Pausar">
+              <span data-icon="play"></span>
+            </button>
+            <button class="btn btn-ghost btn-lg" id="timerLap" aria-label="Vuelta">
+              <span data-icon="flag"></span>
+            </button>
+          </div>
+        </article>
+
+        <article class="card timer-laps-card">
+          <div class="card-head">
+            <span class="card-title">Rondas / Vueltas</span>
+            <button class="btn btn-ghost btn-sm" id="lapsClear">
+              <span data-icon="trash"></span> Limpiar
+            </button>
+          </div>
+          <div class="laps-body" id="lapsList">
+            <div class="empty-state">
+              <span class="empty-icon" data-icon="flag"></span>
+              <p>Las rondas de AMRAP/EMOM/Tabata<br />y las vueltas aparecerán aquí.</p>
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
+  </main>
+
+  <!-- ============ RUNNER (overlay full-screen) ============ -->
+  <div class="runner" id="runner" hidden>
+    <div class="runner-top">
+      <button class="icon-btn" id="runnerExit" aria-label="Salir de la rutina">
+        <span data-icon="close"></span>
+      </button>
+      <div class="runner-info">
+        <span class="runner-wod" id="runnerWodName">—</span>
+        <span class="runner-progress-label" id="runnerProgressLabel">Paso 1 de 1</span>
+      </div>
+      <span class="runner-time" id="runnerTimer">00:00</span>
+    </div>
+
+    <div class="runner-progress"><div class="runner-progress-fill" id="runnerProgressFill"></div></div>
+
+    <div class="runner-body" id="runnerBody">
+      <div class="runner-round" id="runnerRoundBadge" hidden>Ronda 1</div>
+      <h1 class="runner-movement" id="runnerMovement">—</h1>
+      <p class="runner-detail" id="runnerDetail"></p>
+
+      <div class="runner-main">
+        <div class="runner-video" id="runnerVideo" hidden>
+          <iframe id="runnerVideoFrame" title="Vídeo de técnica" loading="lazy" referrerpolicy="strict-origin-when-cross-origin" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+        </div>
+
+        <div class="runner-side">
+          <div class="runner-counter" id="runnerCounter">
+            <span class="runner-count" id="runnerCount">0</span>
+            <span class="runner-target" id="runnerTarget">reps</span>
+          </div>
+
+          <div class="runner-controls">
+            <button class="btn btn-ghost btn-lg" id="runnerMinus" aria-label="Restar">
+              <span data-icon="minus"></span>
+            </button>
+            <button class="btn btn-primary btn-xl" id="runnerPlus" aria-label="Sumar">
+              <span data-icon="plus"></span>
+            </button>
+            <button class="btn btn-ghost btn-lg" id="runnerUndo" aria-label="Paso anterior" title="Paso anterior">
+              <span data-icon="undo"></span>
+            </button>
+          </div>
+
+          <button class="btn btn-success btn-block" id="runnerNext">
+            <span data-icon="check"></span> <span id="runnerNextLabel">Siguiente paso</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ MODAL: nueva/editar rutina ============ -->
+  <div class="modal" id="modalRoutine" hidden>
+    <div class="modal-backdrop" data-close="modalRoutine"></div>
+    <div class="modal-panel">
+      <div class="modal-head">
+        <h2 id="modalRoutineTitle">Nueva rutina</h2>
+        <button class="icon-btn" data-close="modalRoutine" aria-label="Cerrar">
+          <span data-icon="close"></span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <label class="field">
+          <span class="field-label">Nombre de la rutina</span>
+          <input type="text" id="routineName" placeholder="Ej: Mi WOD de hoy" maxlength="60" />
+        </label>
+
+        <div class="field-row">
+          <label class="field">
+            <span class="field-label">Tipo</span>
+            <select id="routineType">
+              <option value="for-time">Por tiempo (For Time)</option>
+              <option value="rounds">Rondas fijas</option>
+              <option value="amrap">AMRAP</option>
+              <option value="emom">EMOM</option>
+            </select>
+          </label>
+          <label class="field">
+            <span class="field-label">Tope de tiempo (min)</span>
+            <input type="number" id="routineTimeCap" min="0" max="120" value="0" />
+          </label>
+          <label class="field" id="roundsField" hidden>
+            <span class="field-label">Número de rondas</span>
+            <input type="number" id="routineRounds" min="1" max="20" value="3" />
+          </label>
+        </div>
+
+        <div class="field">
+          <span class="field-label">Pasos de la rutina</span>
+          <div class="step-builder" id="stepBuilder"></div>
+          <button class="btn btn-ghost btn-block" id="btnAddStep">
+            <span data-icon="plus"></span> Añadir paso
+          </button>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn btn-ghost" data-close="modalRoutine">Cancelar</button>
+        <button class="btn btn-primary" id="btnSaveRoutine">Guardar rutina</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ MODAL: configurar contador ============ -->
+  <div class="modal" id="modalCounter" hidden>
+    <div class="modal-backdrop" data-close="modalCounter"></div>
+    <div class="modal-panel">
+      <div class="modal-head">
+        <h2 id="modalCounterTitle">Configurar contador</h2>
+        <button class="icon-btn" data-close="modalCounter" aria-label="Cerrar">
+          <span data-icon="close"></span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <label class="field">
+          <span class="field-label">Nombre / etiqueta</span>
+          <input type="text" id="cfgLabel" maxlength="40" placeholder="Ej: Sentadillas" />
+        </label>
+
+        <div class="field-row">
+          <label class="field">
+            <span class="field-label">Incremento por pulsación</span>
+            <select id="cfgStep">
+              <option value="1">+1</option>
+              <option value="2">+2</option>
+              <option value="5">+5</option>
+              <option value="10">+10</option>
+            </select>
+          </label>
+          <label class="field">
+            <span class="field-label" id="cfgGoalLabel">Meta (0 = sin límite)</span>
+            <input type="number" id="cfgGoal" min="0" max="99999" value="0" />
+          </label>
+        </div>
+
+        <label class="switch-row" id="cfgAutoRow">
+          <span>
+            <span class="switch-label">Auto-registrar serie al llegar a la meta</span>
+            <span class="switch-hint">Al alcanzar las reps objetivo, guarda la serie y reinicia automáticamente.</span>
+          </span>
+          <input type="checkbox" id="cfgAuto" class="switch-input" />
+          <span class="switch-ui"></span>
+        </label>
+
+        <label class="switch-row" id="cfgSoundRow">
+          <span>
+            <span class="switch-label">Aviso sonoro al completar</span>
+            <span class="switch-hint">Suena un pitido al alcanzar la meta o completar una serie.</span>
+          </span>
+          <input type="checkbox" id="cfgSound" class="switch-input" />
+          <span class="switch-ui"></span>
+        </label>
+      </div>
+      <div class="modal-foot">
+        <button class="btn btn-ghost" data-close="modalCounter">Cancelar</button>
+        <button class="btn btn-primary" id="btnSaveCounter">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ MODAL: detalle de rutina ============ -->
+  <div class="modal" id="modalRoutineDetail" hidden>
+    <div class="modal-backdrop" data-close="modalRoutineDetail"></div>
+    <div class="modal-panel modal-wide">
+      <div class="modal-head">
+        <h2 id="rdName">—</h2>
+        <button class="icon-btn" data-close="modalRoutineDetail" aria-label="Cerrar">
+          <span data-icon="close"></span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="rd-meta">
+          <span class="routine-type" id="rdType"></span>
+          <span class="chip" id="rdTimeCap" hidden></span>
+        </div>
+        <p class="rd-desc" id="rdDesc"></p>
+        <h3 class="rd-sub">Movimientos</h3>
+        <div class="rd-steps" id="rdSteps"></div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn btn-ghost" data-close="modalRoutineDetail">Cancelar</button>
+        <button class="btn btn-primary" id="rdStart">
+          <span data-icon="play"></span> Comenzar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ MODAL: ayuda ============ -->
+  <div class="modal" id="modalHelp" hidden>
+    <div class="modal-backdrop" data-close="modalHelp"></div>
+    <div class="modal-panel">
+      <div class="modal-head">
+        <h2>Ayuda y atajos</h2>
+        <button class="icon-btn" data-close="modalHelp" aria-label="Cerrar">
+          <span data-icon="close"></span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <h3 class="help-h">Atajos de teclado</h3>
+        <table class="help-table">
+          <tr><td><kbd>↑</kbd> / <kbd>↓</kbd></td><td>Sumar / restar (reps o series según el contador activo)</td></tr>
+          <tr><td><kbd>Espacio</kbd></td><td>Sumar (contador activo) / +1 en rutina</td></tr>
+          <tr><td><kbd>-</kbd></td><td>Restar (contador activo)</td></tr>
+          <tr><td><kbd>R</kbd></td><td>Reiniciar contador actual</td></tr>
+          <tr><td><kbd>S</kbd></td><td>Registrar serie</td></tr>
+          <tr><td><kbd>Enter</kbd></td><td>Siguiente paso (en rutina)</td></tr>
+          <tr><td><kbd>←</kbd> / <kbd>→</kbd></td><td>Paso anterior / siguiente</td></tr>
+        </table>
+        <h3 class="help-h">Consejos</h3>
+        <ul class="help-list">
+          <li>El contador resaltado (borde naranja) es el que controlan las flechas <kbd>↑</kbd> / <kbd>↓</kbd> y <kbd>Espacio</kbd>.</li>
+          <li>Toca el número grande o su tarjeta para cambiar el contador activo.</li>
+          <li>Usa los botones de la cabecera para cambiar entre modo día/noche y pantalla completa.</li>
+          <li>Tus datos se guardan automáticamente en este dispositivo.</li>
+          <li>Las rutinas personalizadas se quedan guardadas para la próxima sesión.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" hidden></div>
+
+  <script src="js/data.js" defer></script>
+  <script src="js/videos.js" defer></script>
+  <script src="js/timer.js" defer></script>
+  <script src="js/app.js" defer></script>
+</body>
+</html>
