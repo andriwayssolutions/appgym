@@ -808,6 +808,45 @@ input, select {
 }
 
 /* ==========================================================================
+   Vista general del runner (todos los ejercicios con su progreso)
+   ========================================================================== */
+.ov-wrap {
+  width: 100%;
+  max-width: 480px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.ov-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.ov-step {
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 14px;
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.ov-step:active { transform: scale(0.98); }
+.ov-step.done { border-color: rgba(43, 214, 106, 0.4); background: linear-gradient(180deg, var(--surface), var(--success-soft)); }
+.ov-step-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.ov-step-name { font-weight: 700; font-size: 0.98rem; color: var(--text); }
+.ov-round { font-size: 0.68rem; color: var(--text-faint); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; white-space: nowrap; }
+.ov-step-detail { font-size: 0.78rem; color: var(--text-muted); }
+.ov-step-progress { display: flex; align-items: center; gap: 10px; }
+.ov-bar { flex: 1; height: 6px; border-radius: 999px; background: var(--surface-3); overflow: hidden; }
+.ov-bar-fill { height: 100%; background: var(--accent); border-radius: 999px; transition: width 0.2s ease; }
+.ov-step.done .ov-bar-fill { background: var(--success); }
+.ov-count { font-size: 0.76rem; font-weight: 700; color: var(--text-muted); white-space: nowrap; min-width: 60px; text-align: right; }
+.ov-step.done .ov-count { color: var(--success); }
+
+/* ==========================================================================
    Modal
    ========================================================================== */
 .modal { position: fixed; inset: 0; z-index: 80; }
@@ -1065,12 +1104,18 @@ body.light .tab.is-active {
 /* Pantallas bajas (móvil apaisado o navegador con barra de direcciones grande):
    achica lo más pesado para que "Siguiente paso" entre sin necesidad de scroll */
 @media (max-height: 720px) {
-  .runner-movement { font-size: clamp(1.6rem, 6vw, 2.6rem); }
-  .runner-count { font-size: clamp(3.5rem, 14vw, 6rem); }
-  .runner-video.vertical { height: clamp(110px, 22vh, 160px); }
-  .runner-body { gap: 6px; padding-top: 6px; padding-bottom: 14px; }
-  .runner-counter { margin: 4px 0; }
-  .runner-controls { margin: 4px 0 10px; }
+  .runner-movement { font-size: clamp(1.3rem, 5vw, 2rem); }
+  .runner-detail { font-size: 0.82rem; min-height: 0; }
+  .runner-count { font-size: clamp(2.6rem, 11vw, 4.2rem); }
+  .runner-target { font-size: 1rem; }
+  .runner-video.vertical { height: clamp(150px, 34vh, 240px); }
+  .runner-video { height: clamp(110px, 24vh, 170px); width: auto; }
+  .runner-body { gap: 4px; padding-top: 4px; padding-bottom: 12px; }
+  .runner-counter { margin: 2px 0; }
+  .runner-controls { margin: 2px 0 8px; gap: 10px; }
+  .runner-controls .btn-lg { width: 52px; height: 52px; }
+  .runner-controls .btn-xl { width: 68px; height: 68px; font-size: 1.6rem; }
+  .btn-block { padding: 11px; font-size: 0.92rem; }
 }
 
 /* ==========================================================================

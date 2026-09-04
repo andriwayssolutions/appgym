@@ -19,7 +19,7 @@
     minus: '<svg viewBox="0 0 24 24"><path d="M5 12h14"/></svg>',
     reset: '<svg viewBox="0 0 24 24"><path d="M3.5 12a8.5 8.5 0 1 0 2.5-6L3.5 4"/><path d="M3.5 4v5h5"/></svg>',
     check: '<svg viewBox="0 0 24 24"><path d="M4 12.5l5 5L20 7"/></svg>',
-    undo: '<svg viewBox="0 0 24 24"><path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>',
+    undo: '<svg viewBox="0 0 24 24"><path d="M9 10L4 15l5 5"/><path d="M20 4v7a4 4 0 0 1-4 4H4"/></svg>',
     close: '<svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>',
     play: '<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>',
     pause: '<svg viewBox="0 0 24 24"><path d="M8 5v14M16 5v14"/></svg>',
@@ -33,7 +33,8 @@
     sun: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>',
     moon: '<svg viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>',
     expand: '<svg viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M8 21H5a2 2 0 0 1-2-2v-3M16 21h3a2 2 0 0 0 2-2v-3"/></svg>',
-    compress: '<svg viewBox="0 0 24 24"><path d="M8 3v3a2 2 0 0 1-2 2H3M16 3v3a2 2 0 0 0 2 2h3M8 21v-3a2 2 0 0 0-2-2H3M16 21v-3a2 2 0 0 1 2-2h3"/></svg>'
+    compress: '<svg viewBox="0 0 24 24"><path d="M8 3v3a2 2 0 0 1-2 2H3M16 3v3a2 2 0 0 0 2 2h3M8 21v-3a2 2 0 0 0-2-2H3M16 21v-3a2 2 0 0 1 2-2h3"/></svg>',
+    grid: '<svg viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="8" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/><rect x="13" y="13" width="8" height="8" rx="1.5"/></svg>'
   };
   const FILL = new Set(["play", "stop"]);
 
@@ -622,6 +623,7 @@
   let runnerBodyTemplate = "";
 
   function startRunner(resolved) {
+    const mode = resolved.type === "amrap" ? "amrap" : resolved.type === "emom" ? "emom" : "linear";
     runner = {
       _resolved: resolved,
       name: resolved.name,
@@ -629,10 +631,14 @@
       steps: resolved.steps || [],
       circuit: resolved.circuit || [],
       timeCap: resolved.timeCap || 0,
-      mode: resolved.type === "amrap" ? "amrap" : resolved.type === "emom" ? "emom" : "linear",
+      mode: mode,
       stepIndex: 0,
       roundsCompleted: 0,
       currentReps: 0,
+      // Reps guardadas por ejercicio (solo rutinas lineales): permite saltar
+      // entre movimientos sin perder lo ya contado en cada uno.
+      repsByIndex: (resolved.steps || []).map(() => 0),
+      view: mode === "linear" ? "overview" : "detail",
       currentRound: 1,
       waiting: false,
       completed: false,
@@ -656,17 +662,81 @@
 
     $("#runner").hidden = false;
     $("#runnerWodName").textContent = runner.name;
-    $("#runnerBody").innerHTML = runnerBodyTemplate;
-    hydrateIcons($("#runnerBody"));
+    $("#runnerOverview").hidden = mode !== "linear";
     runnerTimer.start();
-    updateRunnerStep();
+    if (runner.view === "overview") {
+      renderOverview();
+    } else {
+      $("#runnerBody").innerHTML = runnerBodyTemplate;
+      hydrateIcons($("#runnerBody"));
+      updateRunnerStep();
+    }
   }
 
   function exitRunner() {
     if (runnerTimer) { runnerTimer.reset(); runnerTimer = null; }
     runner = null;
     $("#runner").hidden = true;
+    $("#runnerOverview").hidden = true;
     renderRoutines();
+  }
+
+  /* ---- Vista general: todos los ejercicios con su progreso ---- */
+  function stepDone(step, count) {
+    const target = step.reps || 0;
+    return target > 0 ? count >= target : count >= 1;
+  }
+
+  function showOverview() {
+    if (!runner) return;
+    runner.view = "overview";
+    renderOverview();
+  }
+
+  function renderOverview() {
+    if (!runner) return;
+    const total = runner.steps.length;
+    const doneCount = runner.steps.filter((s, i) => stepDone(s, runner.repsByIndex[i] || 0)).length;
+
+    $("#runnerProgressLabel").textContent = doneCount + " de " + total + " ejercicios completos";
+    $("#runnerRoundBadge").hidden = true;
+    $("#runnerProgressFill").style.width = (doneCount / total * 100) + "%";
+
+    const rows = runner.steps.map((s, i) => {
+      const count = runner.repsByIndex[i] || 0;
+      const target = s.reps || 0;
+      const done = stepDone(s, count);
+      const pct = target > 0 ? Math.min(100, Math.round((count / target) * 100)) : (done ? 100 : 0);
+      const roundTxt = s.round ? '<span class="ov-round">Ronda ' + s.round + "</span>" : "";
+      const detailTxt = s.detail ? '<span class="ov-step-detail">' + escapeHtml(s.detail) + "</span>" : "";
+      const countTxt = target > 1 ? count + " / " + target : (done ? "Hecho" : "Pendiente");
+      return (
+        '<button class="ov-step' + (done ? " done" : "") + '" data-idx="' + i + '">' +
+        '<div class="ov-step-top"><span class="ov-step-name">' + escapeHtml(s.title) + "</span>" + roundTxt + "</div>" +
+        detailTxt +
+        '<div class="ov-step-progress"><div class="ov-bar"><div class="ov-bar-fill" style="width:' + pct + '%"></div></div>' +
+        '<span class="ov-count">' + countTxt + "</span></div>" +
+        "</button>"
+      );
+    }).join("");
+
+    $("#runnerBody").innerHTML =
+      '<div class="ov-wrap">' +
+      '<div class="ov-list">' + rows + "</div>" +
+      '<button class="btn btn-success btn-block" id="runnerFinishBtn">' +
+      '<span data-icon="check"></span> Finalizar rutina</button>' +
+      "</div>";
+    hydrateIcons($("#runnerBody"));
+  }
+
+  function openRunnerStepDetail(idx) {
+    if (!runner) return;
+    runner.stepIndex = idx;
+    runner.currentReps = runner.repsByIndex[idx] || 0;
+    runner.view = "detail";
+    $("#runnerBody").innerHTML = runnerBodyTemplate;
+    hydrateIcons($("#runnerBody"));
+    updateRunnerStep();
   }
 
   function runnerTick(st) {
@@ -725,6 +795,7 @@
 
   function updateRunnerStep() {
     if (!runner) return;
+    if (runner.view === "overview") { renderOverview(); return; }
 
     const step = currentRunnerStep();
 
@@ -784,7 +855,7 @@
 
     // Botón siguiente
     if (runner.mode === "linear") {
-      $("#runnerNextLabel").textContent = runner.stepIndex >= runner.steps.length - 1 ? "Finalizar" : "Siguiente paso";
+      $("#runnerNextLabel").textContent = runner.stepIndex >= runner.steps.length - 1 ? "Ver resumen" : "Siguiente paso";
     } else if (runner.mode === "amrap") {
       $("#runnerNextLabel").textContent = runner.stepIndex >= runner.circuit.length - 1 ? "Completar ronda" : "Siguiente paso";
     } else {
@@ -793,28 +864,34 @@
   }
 
   function runnerPlus() {
-    if (!runner || runner.completed) return;
+    if (!runner || runner.completed || runner.view === "overview") return;
     const step = currentRunnerStep();
     if (!step) return;
     runner.currentReps++;
+    if (runner.mode === "linear") runner.repsByIndex[runner.stepIndex] = runner.currentReps;
     if (state.sound) sound("tap");
     bump($("#runnerCount"), "bump");
     updateRunnerStep();
   }
 
   function runnerMinus() {
-    if (!runner || runner.completed) return;
+    if (!runner || runner.completed || runner.view === "overview") return;
     runner.currentReps = Math.max(0, runner.currentReps - 1);
+    if (runner.mode === "linear") runner.repsByIndex[runner.stepIndex] = runner.currentReps;
     updateRunnerStep();
   }
 
   function runnerNext() {
-    if (!runner || runner.completed) return;
+    if (!runner || runner.completed || runner.view === "overview") return;
     if (runner.waiting) return;
 
     if (runner.mode === "linear") {
       runner.stepIndex++;
-      if (runner.stepIndex >= runner.steps.length) { finishRunner(); return; }
+      if (runner.stepIndex >= runner.steps.length) { showOverview(); return; }
+      // Recupera las reps ya contadas en ese ejercicio (si se venía saltando entre pasos)
+      runner.currentReps = runner.repsByIndex[runner.stepIndex] || 0;
+      updateRunnerStep();
+      return;
     } else if (runner.mode === "amrap") {
       runner.stepIndex++;
       if (runner.stepIndex >= runner.circuit.length) {
@@ -833,11 +910,10 @@
   }
 
   function runnerPrev() {
-    if (!runner || runner.completed) return;
-    if (runner.mode === "linear") {
-      if (runner.stepIndex > 0) { runner.stepIndex--; runner.currentReps = 0; }
-    } else {
-      if (runner.stepIndex > 0) { runner.stepIndex--; runner.currentReps = 0; }
+    if (!runner || runner.completed || runner.view === "overview") return;
+    if (runner.stepIndex > 0) {
+      runner.stepIndex--;
+      runner.currentReps = runner.mode === "linear" ? (runner.repsByIndex[runner.stepIndex] || 0) : 0;
     }
     updateRunnerStep();
   }
@@ -847,6 +923,7 @@
     runner.completed = true;
     if (runnerTimer) runnerTimer.pause();
     if (state.sound) sound("success");
+    $("#runnerOverview").hidden = true;
 
     const body = $("#runnerBody");
     const elapsedSec = Math.round((Date.now() - runner.startMs) / 1000);
@@ -857,6 +934,9 @@
       extra = '<div class="runner-stat">' + runner.roundsCompleted + " rondas" + partial + "</div>";
     } else if (runner.mode === "emom") {
       extra = '<div class="runner-stat">' + (runner.currentRound || 1) + " minutos</div>";
+    } else if (runner.mode === "linear") {
+      const doneCount = runner.steps.filter((s, i) => stepDone(s, runner.repsByIndex[i] || 0)).length;
+      extra = '<div class="runner-stat">' + doneCount + " / " + runner.steps.length + " ejercicios completos</div>";
     }
 
     body.innerHTML =
@@ -1179,10 +1259,14 @@
 
     // Runner (delegación de eventos sobre el contenedor estable)
     $("#runner").addEventListener("click", (e) => {
+      const ovStep = e.target.closest(".ov-step");
+      if (ovStep) { openRunnerStepDetail(parseInt(ovStep.dataset.idx, 10)); return; }
       const b = e.target.closest("button");
       if (!b) return;
       switch (b.id) {
         case "runnerExit": exitRunner(); break;
+        case "runnerOverview": showOverview(); break;
+        case "runnerFinishBtn": finishRunner(); break;
         case "runnerPlus": ensureAudio(); runnerPlus(); break;
         case "runnerMinus": runnerMinus(); break;
         case "runnerUndo": runnerPrev(); break;
