@@ -623,6 +623,8 @@
   let runnerBodyTemplate = "";
 
   function startRunner(resolved) {
+    // Por si quedó un timer de una rutina anterior sin limpiar del todo
+    if (runnerTimer) { runnerTimer.reset(); runnerTimer = null; }
     const mode = resolved.type === "amrap" ? "amrap" : resolved.type === "emom" ? "emom" : "linear";
     runner = {
       _resolved: resolved,
@@ -678,6 +680,9 @@
     runner = null;
     $("#runner").hidden = true;
     $("#runnerOverview").hidden = true;
+    // Restaura la plantilla original: si quedó la pantalla de resumen o de
+    // "rutina completada", la próxima rutina la encontraba a medio armar.
+    $("#runnerBody").innerHTML = runnerBodyTemplate;
     renderRoutines();
   }
 
@@ -699,7 +704,6 @@
     const doneCount = runner.steps.filter((s, i) => stepDone(s, runner.repsByIndex[i] || 0)).length;
 
     $("#runnerProgressLabel").textContent = doneCount + " de " + total + " ejercicios completos";
-    $("#runnerRoundBadge").hidden = true;
     $("#runnerProgressFill").style.width = (doneCount / total * 100) + "%";
 
     const rows = runner.steps.map((s, i) => {
@@ -710,13 +714,23 @@
       const roundTxt = s.round ? '<span class="ov-round">Ronda ' + s.round + "</span>" : "";
       const detailTxt = s.detail ? '<span class="ov-step-detail">' + escapeHtml(s.detail) + "</span>" : "";
       const countTxt = target > 1 ? count + " / " + target : (done ? "Hecho" : "Pendiente");
+      const name = escapeHtml(s.title);
       return (
-        '<button class="ov-step' + (done ? " done" : "") + '" data-idx="' + i + '">' +
-        '<div class="ov-step-top"><span class="ov-step-name">' + escapeHtml(s.title) + "</span>" + roundTxt + "</div>" +
+        '<div class="ov-step' + (done ? " done" : "") + '">' +
+        '<div class="ov-step-info" data-idx="' + i + '">' +
+        '<div class="ov-step-top"><span class="ov-step-name">' + name + "</span>" + roundTxt + "</div>" +
         detailTxt +
         '<div class="ov-step-progress"><div class="ov-bar"><div class="ov-bar-fill" style="width:' + pct + '%"></div></div>' +
         '<span class="ov-count">' + countTxt + "</span></div>" +
-        "</button>"
+        "</div>" +
+        '<div class="ov-step-controls">' +
+        '<button class="ov-mini-btn" data-ovminus="' + i + '" aria-label="Restar ' + name + '">' +
+        '<span data-icon="minus"></span></button>' +
+        '<span class="ov-mini-count">' + count + "</span>" +
+        '<button class="ov-mini-btn ov-mini-plus" data-ovplus="' + i + '" aria-label="Sumar ' + name + '">' +
+        '<span data-icon="plus"></span></button>' +
+        "</div>" +
+        "</div>"
       );
     }).join("");
 
@@ -737,6 +751,15 @@
     $("#runnerBody").innerHTML = runnerBodyTemplate;
     hydrateIcons($("#runnerBody"));
     updateRunnerStep();
+  }
+
+  // Suma/resta reps de un ejercicio directo desde la tarjeta de la vista general
+  function ovStepAdjust(idx, delta) {
+    if (!runner || runner.mode !== "linear") return;
+    const cur = runner.repsByIndex[idx] || 0;
+    runner.repsByIndex[idx] = Math.max(0, cur + delta);
+    if (delta > 0 && state.sound) sound("tap");
+    renderOverview();
   }
 
   function runnerTick(st) {
@@ -921,7 +944,11 @@
   function finishRunner() {
     if (!runner || runner.completed) return;
     runner.completed = true;
-    if (runnerTimer) runnerTimer.pause();
+    // pause() detiene el reloj pero no cancela su intervalo interno; si no lo
+    // limpiamos, sigue disparando onTick en segundo plano (contador "loco")
+    // y "Repetir"/una rutina nueva crean OTRO timer, quedando dos peleando
+    // por escribir en pantalla.
+    if (runnerTimer) { runnerTimer.pause(); runnerTimer._clearLoop(); }
     if (state.sound) sound("success");
     $("#runnerOverview").hidden = true;
 
@@ -1259,8 +1286,12 @@
 
     // Runner (delegación de eventos sobre el contenedor estable)
     $("#runner").addEventListener("click", (e) => {
-      const ovStep = e.target.closest(".ov-step");
-      if (ovStep) { openRunnerStepDetail(parseInt(ovStep.dataset.idx, 10)); return; }
+      const ovPlus = e.target.closest("[data-ovplus]");
+      if (ovPlus) { ensureAudio(); ovStepAdjust(parseInt(ovPlus.dataset.ovplus, 10), 1); return; }
+      const ovMinus = e.target.closest("[data-ovminus]");
+      if (ovMinus) { ovStepAdjust(parseInt(ovMinus.dataset.ovminus, 10), -1); return; }
+      const ovInfo = e.target.closest(".ov-step-info");
+      if (ovInfo) { openRunnerStepDetail(parseInt(ovInfo.dataset.idx, 10)); return; }
       const b = e.target.closest("button");
       if (!b) return;
       switch (b.id) {

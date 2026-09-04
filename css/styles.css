@@ -812,15 +812,15 @@ input, select {
    ========================================================================== */
 .ov-wrap {
   width: 100%;
-  max-width: 480px;
+  max-width: 960px;
   display: flex;
   flex-direction: column;
   gap: 14px;
 }
 .ov-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 10px;
 }
 .ov-step {
   text-align: left;
@@ -833,7 +833,7 @@ input, select {
   border-radius: var(--radius-sm);
   transition: border-color 0.15s ease, background 0.15s ease;
 }
-.ov-step:active { transform: scale(0.98); }
+.ov-step-info { cursor: pointer; display: flex; flex-direction: column; gap: 6px; }
 .ov-step.done { border-color: rgba(43, 214, 106, 0.4); background: linear-gradient(180deg, var(--surface), var(--success-soft)); }
 .ov-step-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .ov-step-name { font-weight: 700; font-size: 0.98rem; color: var(--text); }
@@ -845,6 +845,38 @@ input, select {
 .ov-step.done .ov-bar-fill { background: var(--success); }
 .ov-count { font-size: 0.76rem; font-weight: 700; color: var(--text-muted); white-space: nowrap; min-width: 60px; text-align: right; }
 .ov-step.done .ov-count { color: var(--success); }
+
+.ov-step-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 4px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border-soft);
+}
+.ov-mini-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--surface-3);
+  color: var(--text);
+  border: 1px solid var(--border);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.08s ease, background 0.15s ease;
+}
+.ov-mini-btn svg { width: 1em; height: 1em; }
+.ov-mini-btn:active { transform: scale(0.9); }
+.ov-mini-btn.ov-mini-plus { background: var(--accent); color: #fff; border-color: transparent; }
+.ov-mini-count {
+  min-width: 30px;
+  text-align: center;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 1.05rem;
+}
 
 /* ==========================================================================
    Modal
