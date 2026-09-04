@@ -117,6 +117,7 @@ input, select {
   align-items: center;
   gap: 11px;
   min-width: 0;
+  flex-shrink: 0;
 }
 .brand-mark {
   width: 40px;
@@ -176,6 +177,7 @@ input, select {
 .header-actions {
   display: flex;
   gap: 8px;
+  flex-shrink: 0;
 }
 
 .icon-btn {
@@ -950,10 +952,21 @@ input, select {
   .step-row { grid-template-columns: 1fr 80px 60px 34px; }
 }
 
+/* Cabecera compacta en móvil: evita que el logo y las pestañas se solapen */
+@media (max-width: 600px) {
+  .app-header { gap: 8px; padding: 0 10px; }
+  .brand-mark { width: 34px; height: 34px; }
+  .brand-text { display: none; }
+  .tabbar { padding: 3px; gap: 2px; }
+  .tab { padding: 7px 12px; }
+  .header-actions { gap: 4px; }
+  .icon-btn { width: 36px; height: 36px; border-radius: 10px; }
+  #btnFullscreen { display: none; }
+}
+
 @media (max-width: 460px) {
-  .brand-mark { width: 36px; height: 36px; }
-  .brand-name { font-size: 1.2rem; }
-  .tab { padding: 8px 11px; }
+  .brand-mark { width: 32px; height: 32px; }
+  .tab { padding: 7px 10px; }
   .btn-xl { width: 74px; height: 74px; font-size: 1.7rem; }
   .btn-lg { width: 56px; height: 56px; }
 }
