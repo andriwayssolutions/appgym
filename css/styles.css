@@ -739,12 +739,14 @@ input, select {
 
 .runner-body {
   flex: 1;
+  min-height: 0;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 10px;
-  padding: 12px clamp(16px, 4vw, 40px) 40px;
+  padding: 12px clamp(16px, 4vw, 40px) 24px;
   text-align: center;
 }
 .runner-round {
@@ -1043,7 +1045,9 @@ body.light .tab.is-active {
 }
 .runner-video.vertical {
   aspect-ratio: 9 / 16;
-  width: clamp(130px, 20vw, 220px);
+  width: auto;
+  height: clamp(130px, 30vh, 220px);
+  max-height: 30vh;
 }
 .runner-video iframe {
   width: 100%;
@@ -1054,7 +1058,19 @@ body.light .tab.is-active {
 
 @media (max-width: 600px) {
   .runner-main { flex-direction: column; gap: 12px; }
-  .runner-video, .runner-video.vertical { width: min(58vw, 200px); }
+  .runner-video { width: min(70vw, 220px); }
+  .runner-video.vertical { width: auto; height: clamp(120px, 26vh, 190px); }
+}
+
+/* Pantallas bajas (móvil apaisado o navegador con barra de direcciones grande):
+   achica lo más pesado para que "Siguiente paso" entre sin necesidad de scroll */
+@media (max-height: 720px) {
+  .runner-movement { font-size: clamp(1.6rem, 6vw, 2.6rem); }
+  .runner-count { font-size: clamp(3.5rem, 14vw, 6rem); }
+  .runner-video.vertical { height: clamp(110px, 22vh, 160px); }
+  .runner-body { gap: 6px; padding-top: 6px; padding-bottom: 14px; }
+  .runner-counter { margin: 4px 0; }
+  .runner-controls { margin: 4px 0 10px; }
 }
 
 /* ==========================================================================
