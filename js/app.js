@@ -371,13 +371,13 @@
   function resolvePreset(wod) {
     if (wod.type === "amrap") {
       const block = wod.blocks.find((b) => b.kind === "amrap");
-      return { name: wod.name, type: "amrap", timeCap: wod.timeCap, circuit: (block ? block.items : []).map(normItem) };
+      return { name: wod.name, type: "amrap", timeCap: wod.timeCap, description: wod.description || "", circuit: (block ? block.items : []).map(normItem) };
     }
     if (wod.type === "emom") {
       const block = wod.blocks.find((b) => b.kind === "emom");
-      return { name: wod.name, type: "emom", timeCap: wod.timeCap, circuit: (block ? block.items : []).map(normItem) };
+      return { name: wod.name, type: "emom", timeCap: wod.timeCap, description: wod.description || "", circuit: (block ? block.items : []).map(normItem) };
     }
-    return { name: wod.name, type: "linear", steps: expandWod(wod), timeCap: wod.timeCap };
+    return { name: wod.name, type: "linear", steps: expandWod(wod), timeCap: wod.timeCap, description: wod.description || "" };
   }
 
   function normItem(it) {
@@ -634,10 +634,13 @@
       _resolved: resolved,
       name: resolved.name,
       type: resolved.type,
+      description: resolved.description || "",
       steps: resolved.steps || [],
       circuit: resolved.circuit || [],
       timeCap: resolved.timeCap || 0,
       mode: mode,
+      timerStarted: false,
+      infoOpen: false,
       stepIndex: 0,
       roundsCompleted: 0,
       currentReps: 0,
@@ -669,13 +672,50 @@
     $("#runner").hidden = false;
     $("#runnerWodName").textContent = runner.name;
     $("#runnerOverview").hidden = mode !== "linear";
-    runnerTimer.start();
+    // AMRAP/EMOM son formatos cronometrados: arrancan solos.
+    // For-time / rondas: el reloj espera a la primera interacción (o al toque
+    // en el cronómetro) para que puedas leer las instrucciones sin presión.
+    if (runner.mode === "amrap" || runner.mode === "emom") {
+      runnerTimer.start();
+      runner.timerStarted = true;
+    } else {
+      $("#runnerTimer").classList.add("is-armed");
+    }
+    updateRunnerTimerDisplay();
     if (runner.view === "overview") {
       renderOverview();
     } else {
       $("#runnerBody").innerHTML = runnerBodyTemplate;
       hydrateIcons($("#runnerBody"));
       updateRunnerStep();
+    }
+  }
+
+  // Arranca el cronómetro del runner la primera vez que hace falta.
+  function ensureRunnerTimerStarted() {
+    if (!runner || runner.timerStarted) return;
+    if (runnerTimer && !runnerTimer.running && !runnerTimer.finished) {
+      runnerTimer.start();
+      runner.timerStarted = true;
+      $("#runnerTimer").classList.remove("is-armed");
+      updateRunnerTimerDisplay();
+    }
+  }
+
+  function toggleRunnerTimer() {
+    if (!runner || !runnerTimer) return;
+    if (!runner.timerStarted) { ensureRunnerTimerStarted(); return; }
+    runnerTimer.toggle();
+    updateRunnerTimerDisplay();
+  }
+
+  function updateRunnerTimerDisplay() {
+    const el = $("#runnerTimer");
+    if (!el || !runner) return;
+    el.classList.toggle("is-armed", !runner.timerStarted);
+    el.classList.toggle("is-paused", runner.timerStarted && runnerTimer && !runnerTimer.running && !runnerTimer.finished);
+    if (!runner.timerStarted) {
+      el.textContent = "▶ " + window.fmtTime(0);
     }
   }
 
@@ -738,8 +778,18 @@
       );
     }).join("");
 
+    const info = runner.description
+      ? '<div class="ov-info' + (runner.infoOpen ? " open" : "") + '">' +
+        '<button class="ov-info-toggle" id="runnerInfoToggle">' +
+        '<span data-icon="help"></span> Instrucciones' +
+        '<span class="ov-info-chevron">' + (runner.infoOpen ? "▲" : "▼") + "</span></button>" +
+        (runner.infoOpen ? '<p class="ov-info-body">' + escapeHtml(runner.description) + "</p>" : "") +
+        "</div>"
+      : "";
+
     $("#runnerBody").innerHTML =
       '<div class="ov-wrap">' +
+      info +
       '<div class="ov-list">' + rows + "</div>" +
       '<button class="btn btn-success btn-block" id="runnerFinishBtn">' +
       '<span data-icon="check"></span> Finalizar rutina</button>' +
@@ -749,6 +799,7 @@
 
   function openRunnerStepDetail(idx) {
     if (!runner) return;
+    ensureRunnerTimerStarted();
     runner.stepIndex = idx;
     runner.currentReps = runner.repsByIndex[idx] || 0;
     runner.view = "detail";
@@ -760,6 +811,7 @@
   // Suma/resta reps de un ejercicio directo desde la tarjeta de la vista general
   function ovStepAdjust(idx, delta) {
     if (!runner || runner.mode !== "linear") return;
+    if (delta > 0) ensureRunnerTimerStarted();
     const cur = runner.repsByIndex[idx] || 0;
     runner.repsByIndex[idx] = Math.max(0, cur + delta);
     if (delta > 0 && state.sound) sound("tap");
@@ -768,7 +820,10 @@
 
   function runnerTick(st) {
     if (!runner) return;
-    $("#runnerTimer").textContent = st.display;
+    if (runner.timerStarted) {
+      $("#runnerTimer").textContent = st.display;
+      $("#runnerTimer").classList.toggle("is-paused", !st.running && !st.finished);
+    }
     if (st.round) runner.currentRound = st.round;
     if (st.finished && runner.mode === "amrap") {
       finishRunner();
@@ -894,6 +949,7 @@
     if (!runner || runner.completed || runner.view === "overview") return;
     const step = currentRunnerStep();
     if (!step) return;
+    ensureRunnerTimerStarted();
     runner.currentReps++;
     if (runner.mode === "linear") runner.repsByIndex[runner.stepIndex] = runner.currentReps;
     if (state.sound) sound("tap");
@@ -911,6 +967,7 @@
   function runnerNext() {
     if (!runner || runner.completed || runner.view === "overview") return;
     if (runner.waiting) return;
+    ensureRunnerTimerStarted();
 
     if (runner.mode === "linear") {
       runner.stepIndex++;
@@ -1308,6 +1365,8 @@
         case "runnerNext": runnerNext(); break;
         case "runnerClose": exitRunner(); break;
         case "runnerRepeat": startRunner(resolveCurrentAgain()); break;
+        case "runnerTimer": ensureAudio(); toggleRunnerTimer(); break;
+        case "runnerInfoToggle": runner.infoOpen = !runner.infoOpen; renderOverview(); break;
       }
     });
 

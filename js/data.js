@@ -3031,48 +3031,71 @@ window.WODS = [
      ========================================================================== */
   {
     id: "ax-burn-ladder", name: "Burn Ladder", category: "inferno", type: "for-time", timeCap: 10 * 60,
-    description: "Semana 1 · 10 min de tortura. 5 reps de cada movimiento seguidas de un hold isométrico que crece 5 s por vuelta (5, 10, 15, 20, 25 s). Objetivo: acumular 10 min de tiempo de hold. Descanso al mínimo.",
+    description:
+      "SEMANA 1 · 10 minutos de tortura.\n\n" +
+      "Hacé 5 reps del movimiento y aguantá un hold isométrico por el tiempo indicado. Los tiempos de hold suben de a 5 segundos. " +
+      "Ejemplo: 5 flexiones y hold de 5 s; otras 5 flexiones y hold de 10 s; y así hasta llegar arriba (25 s) o hasta no poder " +
+      "hacer el ejercicio con buena técnica. El objetivo es acumular 10 minutos de \"tiempo de hold\" en total.\n\n" +
+      "IMPORTANTE: cada ejercicio se hace POR SEPARADO, no es un circuito. Completás toda la escalera de un ejercicio " +
+      "(5+5s, 5+10s, 5+15s, 5+20s, 5+25s — o cuando fallás el hold o la técnica) y recién ahí pasás al siguiente.\n\n" +
+      "Descanso al mínimo.",
     blocks: [
       { kind: "single", items: [
-        { name: "Flexiones", detail: "x5 + hold 5→25 s", reps: 5 },
-        { name: "Sentadillas prisionero", detail: "x5 + hold 5→25 s", reps: 5 },
-        { name: "Pendulum planks", detail: "x5 + plancha 5→25 s", reps: 5 },
-        { name: "Inverted rows", detail: "x5 + squeeze 5→25 s", reps: 5 },
-        { name: "Press mancuernas sentado", detail: "x5 + hold 90° 5→25 s", reps: 5 },
-        { name: "Elevación de gemelos con mancuernas", detail: "x5 + hold en puntas 5→25 s", reps: 5 },
-        { name: "Curl de bíceps con mancuernas", detail: "x5 + hold 90° 5→25 s", reps: 5 },
-        { name: "Encogimientos con mancuernas", detail: "x5 + hold 5→25 s", reps: 5 }
+        { name: "Flexiones", detail: "5 reps → hold: 5s · 10s · 15s · 20s · 25s (parás al fallar)", reps: 5 },
+        { name: "Sentadillas prisionero", detail: "5 reps → hold en isométrico: 5→25 s", reps: 5 },
+        { name: "Pendulum planks", detail: "5 reps → plancha: 5→25 s", reps: 5 },
+        { name: "Inverted rows", detail: "5 reps → squeeze arriba: 5→25 s", reps: 5 },
+        { name: "Press mancuernas sentado", detail: "5 reps → hold a 90°: 5→25 s", reps: 5 },
+        { name: "Elevación de gemelos con mancuernas", detail: "5 reps → hold en puntas: 5→25 s", reps: 5 },
+        { name: "Curl de bíceps con mancuernas", detail: "5 reps → hold a 90°: 5→25 s", reps: 5 },
+        { name: "Encogimientos con mancuernas", detail: "5 reps → hold arriba: 5→25 s", reps: 5 }
       ]}
     ]
   },
   {
     id: "ax-diabol-x", name: "Diabol-X (El Diablo)", category: "inferno", type: "for-time", timeCap: 10 * 60,
-    description: "Semana 2 · 10 ejercicios, 1 minuto cada uno (10 min total). Cada rep suma a tu puntaje. Descanso máx. 30 s entre ejercicios. Izquierda + derecha = 1 rep.",
+    description:
+      "SEMANA 2 · 10 ejercicios, 1 minuto cada uno. Todo el entrenamiento se completa en 10 minutos.\n\n" +
+      "Cada rep de cada ejercicio suma a tu puntaje total. Al final de los 10 minutos sumás todas tus reps: ese es tu score. " +
+      "No importa qué estrategia uses para pasarla, esperá que sea durísima. Por algo lo llaman El Diablo.\n\n" +
+      "El descanso entre ejercicios NO puede superar los 30 segundos.\n\n" +
+      "Izquierda + derecha = 1 rep (recién cuando completás ambos lados) en: Minuto 3 (Diagonal Jumping Planks) y Minuto 5 (Sprinter Lunges).",
     blocks: [
       { kind: "single", items: [
-        { name: "Flexiones", detail: "1 min", reps: 0 },
-        { name: "Saltos al cajón", detail: "1 min", reps: 0 },
-        { name: "Diagonal jumping planks", detail: "1 min", reps: 0 },
-        { name: "Diamond cutter pushups", detail: "1 min", reps: 0 },
-        { name: "Sprinter lunges", detail: "1 min", reps: 0 },
-        { name: "Squat burpees", detail: "1 min", reps: 0 },
-        { name: "Reverse corkscrews", detail: "1 min", reps: 0 },
-        { name: "DB renegade rows", detail: "1 min", reps: 0 },
-        { name: "DB thrusters", detail: "1 min", reps: 0 },
-        { name: "DB straight bar curls", detail: "1 min", reps: 0 }
+        { name: "Min 1 · Flexiones", detail: "Máx reps en 60 s", reps: 0 },
+        { name: "Min 2 · Saltos al cajón", detail: "Máx reps en 60 s", reps: 0 },
+        { name: "Min 3 · Diagonal jumping planks", detail: "Izq + der = 1 rep · máx en 60 s", reps: 0 },
+        { name: "Min 4 · Diamond cutter pushups", detail: "Máx reps en 60 s", reps: 0 },
+        { name: "Min 5 · Sprinter lunges", detail: "Izq + der = 1 rep · máx en 60 s", reps: 0 },
+        { name: "Min 6 · Squat burpees", detail: "Máx reps en 60 s", reps: 0 },
+        { name: "Min 7 · Reverse corkscrews", detail: "Máx reps en 60 s", reps: 0 },
+        { name: "Min 8 · DB renegade rows", detail: "Máx reps en 60 s", reps: 0 },
+        { name: "Min 9 · DB thrusters", detail: "Máx reps en 60 s", reps: 0 },
+        { name: "Min 10 · DB straight bar curls", detail: "Máx reps en 60 s", reps: 0 }
       ]}
     ]
   },
   {
     id: "ax-fire-ice", name: "Fire and Ice", category: "inferno", type: "rounds", timeCap: 10 * 60,
-    description: "Semana 3 · 10 min. Alterná el circuito FIRE (1 min) con el circuito ICE (1 min): 5 rondas de cada uno. Objetivo: completar todas las rondas sin fallar los targets.",
+    description:
+      "SEMANA 3 · 10 minutos de tortura.\n\n" +
+      "Alterná \"FIRE\" (un circuito que hay que completar en 1 minuto) con \"ICE\" (un circuito más fácil, también dentro de 1 minuto). " +
+      "Objetivo: completar todas las rondas sin fallar los targets de reps de cada ronda. Total: 10 minutos, con dos formas de llegar.\n\n" +
+      "OPCIÓN 1 (más difícil): 5 rondas de FIRE (alias \"Hang Ten\") alternadas con 5 de ICE →\n" +
+      "FIRE / ICE / FIRE / ICE / FIRE / ICE / FIRE / ICE / FIRE / ICE.\n\n" +
+      "OPCIÓN 2 (un poco más fácil): sacás 2 rondas de FIRE y las cambiás por una variante algo más dura de ICE →\n" +
+      "ICE / FIRE / ICE / ICE / FIRE / ICE / ICE / ICE / FIRE / ICE.\n" +
+      "En la OPCIÓN 2, cada ICE agrega Saltos simples a la comba con el tiempo que sobre del minuto.\n\n" +
+      "FIRE: Sprawling Burpees ×10 · Twisting Pistons ×5 por lado · Divebomber Pushups ×10.\n" +
+      "ICE: Dominadas ×5 · Rodillas al pecho colgado ×5.\n\n" +
+      "(Abajo está cargada la OPCIÓN 1.)",
     blocks: [
       { kind: "rounds", rounds: 5, items: [
-        { name: "Sprawling burpees", detail: "FIRE", reps: 10 },
-        { name: "Twisting pistons", detail: "FIRE · 5 por lado", reps: 10 },
-        { name: "Divebomber pushups", detail: "FIRE", reps: 10 },
-        { name: "Dominadas", detail: "ICE", reps: 5 },
-        { name: "Hanging knee raises", detail: "ICE", reps: 5 }
+        { name: "Sprawling burpees", detail: "FIRE · x10", reps: 10 },
+        { name: "Twisting pistons", detail: "FIRE · 5 por lado (=10)", reps: 10 },
+        { name: "Divebomber pushups", detail: "FIRE · x10", reps: 10 },
+        { name: "Dominadas", detail: "ICE · x5", reps: 5 },
+        { name: "Rodillas al pecho colgado", detail: "ICE · x5", reps: 5 }
       ]}
     ]
   },

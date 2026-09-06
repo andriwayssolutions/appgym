@@ -728,6 +728,45 @@ input, select {
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   color: var(--accent);
+  background: none;
+  border: none;
+  padding: 4px 8px;
+  border-radius: 10px;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+button.runner-time { cursor: pointer; }
+button.runner-time:hover { background: var(--accent-soft); }
+.runner-time.is-armed { color: var(--success); animation: runnerArmPulse 1.6s ease-in-out infinite; }
+.runner-time.is-paused { color: var(--text-muted); }
+@keyframes runnerArmPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.55; } }
+
+/* Instrucciones plegables en la vista general */
+.ov-info {
+  width: min(560px, 100%);
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  text-align: left;
+  flex-shrink: 0;
+}
+.ov-info-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 14px;
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: var(--text);
+}
+.ov-info-chevron { margin-left: auto; color: var(--text-faint); font-size: 0.7rem; }
+.ov-info-body {
+  padding: 0 14px 14px;
+  font-size: 0.84rem;
+  line-height: 1.6;
+  color: var(--text-muted);
+  white-space: pre-line;
 }
 .runner-progress { height: 5px; background: var(--surface-3); }
 .runner-progress-fill {
@@ -745,11 +784,15 @@ input, select {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  /* `safe` evita que el contenido más alto que el contenedor quede recortado
+     por arriba y sin poder alcanzarse con scroll (pasaba en pantalla partida). */
+  justify-content: safe center;
   gap: 10px;
   padding: 12px clamp(16px, 4vw, 40px) 24px;
   text-align: center;
 }
+/* La vista general (grilla de ejercicios) siempre desde arriba. */
+.runner-body:has(.ov-wrap) { justify-content: flex-start; }
 .runner-round {
   padding: 6px 16px;
   border-radius: 999px;
@@ -1167,6 +1210,7 @@ body.light .tab.is-active {
   font-size: 0.9rem;
   line-height: 1.55;
   margin-bottom: 16px;
+  white-space: pre-line;
 }
 .rd-sub {
   font-family: var(--font-display);
