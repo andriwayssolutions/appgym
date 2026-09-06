@@ -524,6 +524,7 @@ input, select {
 }
 .badge-benchmark { background: var(--blue-soft); color: var(--blue); }
 .badge-hero { background: var(--danger-soft); color: var(--danger); }
+.badge-inferno { background: rgba(255, 176, 32, 0.16); color: #ffb020; }
 .badge-custom { background: var(--success-soft); color: var(--success); }
 
 .routine-name {

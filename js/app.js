@@ -413,7 +413,7 @@
     const grid = $("#routineGrid");
     const items = [];
 
-    if (routineFilter === "all" || routineFilter === "benchmark" || routineFilter === "hero") {
+    if (routineFilter !== "custom") {
       window.WODS.forEach((wod) => {
         if (routineFilter !== "all" && wod.category !== routineFilter) return;
         const resolved = resolvePreset(wod);
@@ -449,6 +449,7 @@
       const badge = {
         benchmark: '<span class="routine-badge badge-benchmark">Benchmark</span>',
         hero: '<span class="routine-badge badge-hero">Héroe</span>',
+        inferno: '<span class="routine-badge badge-inferno">Reto</span>',
         custom: '<span class="routine-badge badge-custom">Personalizada</span>'
       }[it.category];
       const meta =
