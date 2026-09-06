@@ -24,14 +24,14 @@
      Fase 1 — ejercicios base (se pide el 1RM en el onboarding)
      ====================================================================== */
   const LIFTS = [
-    { id: "incline-bench",     name: "Press Inclinado (barra o mancuernas)", muscle: "Pecho",       finisher: "Flexiones al fallo" },
-    { id: "underhand-row",     name: "Remo con Barra Supino",                muscle: "Espalda",     finisher: "Inverted rows al fallo" },
-    { id: "squat",             name: "Sentadilla con Barra",                 muscle: "Cuádriceps",  finisher: "Prisoner jump squats al fallo" },
-    { id: "deadlift",          name: "Peso Muerto",                          muscle: "Isquios",     finisher: "Curl femoral en fitball al fallo" },
-    { id: "bb-curl",           name: "Curl con Barra",                       muscle: "Bíceps",      finisher: "Inverted chin rows al fallo" },
-    { id: "lying-tri-ext",     name: "Extensión de Tríceps Tumbado (EZ/DB)", muscle: "Tríceps",     finisher: "Fondos en banco al fallo" },
-    { id: "db-shoulder-press", name: "Press Militar con Mancuernas",         muscle: "Hombros",     finisher: "Press neutro DB al 50% del 12RM" },
-    { id: "db-high-pull",      name: "High Pull con Mancuernas",             muscle: "Trapecios",   finisher: "Encogimientos DB sentado al 50% del 12RM" }
+    { id: "incline-bench",     name: "Press Inclinado (barra o mancuernas)",      muscle: "Pecho" },
+    { id: "underhand-row",     name: "Remo con Barra Supino",                     muscle: "Espalda" },
+    { id: "squat",             name: "Sentadilla con Barra",                      muscle: "Cuádriceps" },
+    { id: "deadlift",          name: "Peso Muerto",                               muscle: "Isquios" },
+    { id: "bb-curl",           name: "Curl con Barra",                            muscle: "Bíceps" },
+    { id: "lying-tri-ext",     name: "Extensión de Tríceps Tumbado (Barra EZ/DB)", muscle: "Tríceps" },
+    { id: "db-shoulder-press", name: "Press Militar con Mancuernas",              muscle: "Hombros" },
+    { id: "db-high-pull",      name: "High Pull con Mancuernas",                  muscle: "Trapecios" }
   ];
   const DAY_PAIRS = [
     { day: "mon", a: "incline-bench",     b: "underhand-row" },
@@ -45,8 +45,41 @@
     "Bíceps": "Bíceps", "Tríceps": "Tríceps", "Hombros": "Hombro", "Trapecios": "Trapec."
   };
 
-  const PRO_PAIN = "Máx repeticiones al fallo. Al terminar la última rep, arrancá el reloj de 4:30 y completá 2× ese número.";
-  const ISO_PRO_PAIN = "Hold isométrico 60 s. Después completá el nº de reps de tu fallo original en 9 min; cada vez que descansás, retomás con un hold de 30 s.";
+  // Finishers de Fase 1 por músculo.
+  //   proPain  (sem 1-2): máx reps de `reps` al fallo → 2× ese nº en 4:30.
+  //   isoProPain (sem 3-4): hold de `iso` 60 s → completar el nº de reps de `reps`
+  //                         del PRO-PAIN en 9 min; cada descanso retoma con hold 30 s.
+  const F1_FINISHERS = {
+    "Pecho":      { reps: "Flexiones (push-ups)",       iso: "hold en la posición baja de la flexión" },
+    "Espalda":    { reps: "Inverted rows",              iso: "Inverted Row Hold (arriba, escápulas juntas)" },
+    "Cuádriceps": { reps: "Prisoner jump squats",       iso: "Wall sit (sentadilla isométrica apoyado en la pared)" },
+    "Isquios":    { reps: "Curl femoral en fitball",    iso: "plancha de glúteos con piernas extendidas (long-leg glute bridge hold)" },
+    "Bíceps":     { reps: "Inverted chin rows",         iso: "Inverted Chin Curl Hold",
+                    beginner: "Principiantes: hacé Inverted Chinups al fallo (en vez de Inverted Chin Rows) y el hold es Inverted Chin Row Hold." },
+    "Tríceps":    { reps: "Fondos en banco (bench dips)", iso: "hold en el punto bajo del fondo en banco" },
+    "Hombros":    { reps: "Press militar neutro DB",    iso: "Side Lateral 45° Hold (con la mitad del peso habitual de elevaciones laterales)",
+                    load: "PRO-PAIN: al 50% del 12RM · ISO: peso habitual de elevaciones laterales" },
+    "Trapecios":  { reps: "Encogimientos DB sentado",   iso: "Seated DB Shrug Hold (usá el 12RM de Press Militar DB)",
+                    load: "PRO-PAIN: al 50% del 12RM · ISO principiante: pies apoyados en el piso" }
+  };
+  function f1Finisher(muscle, week) {
+    const f = F1_FINISHERS[muscle];
+    const iso = week >= 3;
+    let protocol;
+    if (iso) {
+      protocol = "Hold de «" + f.iso + "» 60 s. Después, en 9 min, completá el nº de reps de «" + f.reps +
+        "» que lograste al fallo en tu PRO-PAIN. Cada vez que descansás, retomás con un hold de 30 s — el reloj no para.";
+      if (f.beginner) protocol += " " + f.beginner;
+    } else {
+      protocol = "Máx repeticiones de «" + f.reps + "» al fallo. Al terminar la última rep, arrancá el reloj de 4:30 y completá 2× ese número.";
+    }
+    if (f.load) protocol += " (Carga: " + f.load + ".)";
+    return {
+      key: slug(muscle) + "-fin", kind: "propain", muscle: muscle,
+      movement: f.reps + (iso ? " · hold: " + f.iso : ""),
+      protocol: protocol, clockSec: iso ? 540 : 270, label: iso ? "ISO-PRO-PAIN" : "PRO-PAIN"
+    };
+  }
 
   /* ======================================================================
      Fase 2 — AX-RSON (por músculo)
@@ -152,7 +185,6 @@
     const bigId = swap ? pair.b : pair.a;
     const smallId = swap ? pair.a : pair.b;
     const big = liftById(bigId), small = liftById(smallId);
-    const isoWk = week >= 3;
 
     const grp = (lift, sets, reps, pct, tag) => {
       const ww = workWeight(lift.id, pct);
@@ -166,12 +198,6 @@
         }]
       };
     };
-    const fin = (lift) => ({
-      key: lift.id + "-fin", kind: "propain", muscle: lift.muscle, movement: lift.finisher,
-      protocol: isoWk ? ISO_PRO_PAIN : PRO_PAIN, clockSec: isoWk ? 540 : 270,
-      label: isoWk ? "ISO-PRO-PAIN" : "PRO-PAIN"
-    });
-
     return {
       id: week + "-" + day, week: week, day: day, phase: 1,
       title: big.muscle + " / " + small.muscle,
@@ -181,7 +207,7 @@
         ? "Alterná una serie de A y una de B hasta completar las 20. Descanso ~1 min entre series."
         : "Terminá las 10 series de A antes de pasar a B. Descanso 1 min dentro de cada 10-by, 3-5 min entre los dos.",
       groups: [grp(big, 10, 10, 0.60, "A · 10 × 10 @ 60%"), grp(small, 10, 5, 0.75, "B · 10 × 5 @ 75% (8RM)")],
-      finishers: [fin(big), fin(small)]
+      finishers: [f1Finisher(big.muscle, week), f1Finisher(small.muscle, week)]
     };
   }
 
@@ -380,6 +406,14 @@
   }
   function nextCell() {
     return allCells().find((c) => isActionable(c) && !st.done[cellId(c.week, c.day)]) || null;
+  }
+  // Día accionable anterior / siguiente al que está abierto (para navegar en la sesión).
+  function siblingCell(dir) {
+    if (!sessionRef) return null;
+    const list = allCells().filter(isActionable);
+    const i = list.findIndex((c) => cellId(c.week, c.day) === sessionRef.id);
+    if (i < 0) return null;
+    return list[i + dir] || null;
   }
   function progress() {
     const cells = allCells().filter(isActionable);
@@ -674,27 +708,32 @@
       let c = "pg-set";
       if (rec) c += " is-done";
       else if (i === firstPending) c += " is-next";
+      if (editing && editing.key === ex.key && editing.index === i) c += " is-editing";
       const inner = rec
         ? '<span class="pg-set-w">' + rec.w + '</span><span class="pg-set-r">×' + rec.r + "</span>"
         : '<span class="pg-set-n">' + (i + 1) + "</span>";
-      const attr = rec ? "" : ' data-set="' + ex.key + "|" + i + '"';
-      return '<button class="' + c + '"' + attr + ">" + inner + "</button>";
+      // Toda serie es tocable: pendiente para registrarla, hecha para corregirla.
+      return '<button class="' + c + '" data-set="' + ex.key + "|" + i + '">' + inner + "</button>";
     }).join("");
 
     let editor = "";
     if (editing && editing.key === ex.key) {
-      const prefW = logged.length ? logged[logged.length - 1].w : (last ? last.w : (ex.prefillKg != null ? ex.prefillKg : ""));
+      const cur = logged[editing.index];
+      const prefW = cur ? cur.w
+        : (logged.length ? logged[logged.length - 1].w : (last ? last.w : (ex.prefillKg != null ? ex.prefillKg : "")));
+      const prefR = cur ? cur.r : (ex.reps || "");
       editor =
         '<div class="pg-set-editor">' +
-        '<div class="pg-set-editor-title">Serie ' + (editing.index + 1) + " de " + ex.sets + " · " + esc(ex.loadHint) + "</div>" +
+        '<div class="pg-set-editor-title">' + (cur ? "Corregir serie " : "Serie ") + (editing.index + 1) + " de " + ex.sets + " · " + esc(ex.loadHint) + "</div>" +
         '<div class="pg-set-editor-fields">' +
         '<label class="field"><span class="field-label">Peso (' + U() + ')</span>' +
         '<input type="number" inputmode="decimal" step="' + stepFor() + '" id="pgSetW" value="' + prefW + '" /></label>' +
         '<label class="field"><span class="field-label">Reps</span>' +
-        '<input type="number" inputmode="numeric" id="pgSetR" value="' + (ex.reps || "") + '" /></label>' +
+        '<input type="number" inputmode="numeric" id="pgSetR" value="' + prefR + '" /></label>' +
         "</div>" +
         '<div class="pg-set-editor-actions">' +
         '<button class="btn btn-ghost btn-sm" id="pgSetCancel">Cancelar</button>' +
+        (cur ? '<button class="btn btn-danger btn-sm" id="pgSetDelete"><span data-icon="trash"></span> Borrar</button>' : "") +
         '<button class="btn btn-primary btn-sm" id="pgSetSave"><span data-icon="check"></span> Guardar serie</button>' +
         "</div></div>";
     }
@@ -736,6 +775,7 @@
       '<label class="field"><span class="field-label">Reps hechas</span>' +
       '<input type="number" inputmode="numeric" data-tr="' + ex.key + '" value="' + (rec ? rec.r : "") + '" placeholder="' + ex.targetReps + '" /></label>' +
       '<button class="btn btn-primary btn-sm" data-tsave="' + ex.key + '"><span data-icon="check"></span> Guardar</button>' +
+      (rec ? '<button class="btn btn-ghost btn-sm" data-tclear="' + ex.key + '"><span data-icon="trash"></span></button>' : "") +
       "</div>" +
       "</div>"
     );
@@ -786,7 +826,8 @@
           '<div class="pg-fin-row">' +
           '<label class="field"><span class="field-label">Reps al fallo</span>' +
           '<input type="number" inputmode="numeric" data-fin="' + f.key + '" value="' + (rec && rec.fail ? rec.fail : "") + '" placeholder="—" /></label>' +
-          '<button class="btn btn-ghost btn-sm" data-finsave="' + f.key + '"><span data-icon="check"></span> Guardar</button>' +
+          '<button class="btn btn-ghost btn-sm" data-finsave="' + f.key + '"><span data-icon="check"></span> ' + (rec && rec.fail ? "Actualizar" : "Guardar") + "</button>" +
+          (rec && rec.fail ? '<button class="btn btn-ghost btn-sm" data-finclear="' + f.key + '"><span data-icon="trash"></span></button>' : "") +
           '<button class="btn btn-ghost btn-sm" data-finclock="' + f.key + '|' + f.clockSec + '"><span data-icon="clock"></span> Reloj</button>' +
           "</div>" +
           (goalTxt ? '<div class="pg-fin-goal">' + goalTxt + "</div>" : "") +
@@ -812,6 +853,17 @@
     }).join("");
 
     const pr = sessionProgress();
+    const prev = siblingCell(-1), next = siblingCell(1);
+    const navLabel = (c) => (c.kind === "challenge" ? "Reto" : (c.labelShort || c.label)) + " · Sem " + c.week;
+    const nav =
+      '<div class="pg-session-nav">' +
+      (prev
+        ? '<button class="btn btn-ghost btn-sm" data-navcell="' + cellId(prev.week, prev.day) + '">← ' + esc(navLabel(prev)) + "</button>"
+        : "<span></span>") +
+      (next
+        ? '<button class="btn btn-ghost btn-sm" data-navcell="' + cellId(next.week, next.day) + '">' + esc(navLabel(next)) + " →</button>"
+        : "<span></span>") +
+      "</div>";
 
     return (
       '<div class="pg-wrap pg-session">' +
@@ -827,6 +879,7 @@
       finHtml +
       '<button class="btn btn-primary btn-block" id="pgFinish"><span data-icon="check"></span> ' +
       (pr.done >= pr.total ? "Finalizar sesión" : "Finalizar sesión (" + pr.done + "/" + pr.total + ")") + "</button>" +
+      nav +
       '<div class="pg-rest-bar" id="pgRestBar" hidden></div>' +
       "</div>"
     );
@@ -877,13 +930,33 @@
     const ex = currentEx(key);
     const lg = sessionLog();
     if (!lg.sets[key]) lg.sets[key] = [];
+    const isNew = index >= lg.sets[key].length;
     lg.sets[key][index] = { w: Math.round(w * 100) / 100, r: r, ts: Date.now(), m: ex ? ex.movementSlug : key };
     lg.sets[key] = lg.sets[key].filter(Boolean);
     editing = null;
     save();
     sound("tap");
-    if (ex && lg.sets[key].length < ex.sets) startRest(ex.restSec);
-    else stopRest();
+    // El countdown de descanso solo arranca al registrar una serie nueva, no al corregir.
+    if (isNew && ex && lg.sets[key].length < ex.sets) startRest(ex.restSec);
+    render();
+  }
+
+  function deleteSet(key, index) {
+    const lg = sessionLog();
+    if (lg.sets[key]) {
+      lg.sets[key].splice(index, 1);
+      if (!lg.sets[key].length) delete lg.sets[key];
+    }
+    editing = null;
+    save();
+    toast("Serie borrada");
+    render();
+  }
+
+  function clearTempo(key) {
+    const lg = sessionLog();
+    delete lg.sets[key];
+    save();
     render();
   }
 
@@ -964,6 +1037,8 @@
     if (t.closest("#pgBack")) { go("calendar"); return; }
     if (t.closest("#pgFinish")) { finishSession(); return; }
     if (t.closest("#pgRestSkip")) { stopRest(); return; }
+    const navCell = t.closest("[data-navcell]");
+    if (navCell) { openSession(navCell.dataset.navcell); return; }
     if (t.closest("#pgOpenTimer")) {
       const tab = document.querySelector('.tab[data-view="timer"]');
       if (tab) tab.click();
@@ -980,13 +1055,22 @@
       return;
     }
     if (t.closest("#pgSetCancel")) { editing = null; render(); return; }
+    if (t.closest("#pgSetDelete")) { if (editing) deleteSet(editing.key, editing.index); return; }
     if (t.closest("#pgSetSave")) { if (editing) saveSet(editing.key, editing.index); return; }
 
     const tSave = t.closest("[data-tsave]");
     if (tSave) { saveTempo(tSave.dataset.tsave); return; }
+    const tClear = t.closest("[data-tclear]");
+    if (tClear) { clearTempo(tClear.dataset.tclear); return; }
 
     const finSave = t.closest("[data-finsave]");
     if (finSave) { saveFinisher(finSave.dataset.finsave); return; }
+    const finClear = t.closest("[data-finclear]");
+    if (finClear) {
+      const lg = sessionLog();
+      if (lg.finishers[finClear.dataset.finclear]) delete lg.finishers[finClear.dataset.finclear].fail;
+      save(); render(); return;
+    }
     const finToggle = t.closest("[data-fintoggle]");
     if (finToggle) { toggleFinisher(finToggle.dataset.fintoggle); return; }
     const finClock = t.closest("[data-finclock]");

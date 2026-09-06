@@ -1394,6 +1394,15 @@ body.light .tab.is-active {
 .pg-ex-tempo .pg-tempo-fields .field { margin-bottom: 0; flex: 1; min-width: 90px; }
 .pg-ex-tempo .pg-tempo-fields .btn { flex-shrink: 0; }
 
+.pg-set.is-editing { border-color: var(--blue); box-shadow: 0 0 0 2px var(--blue) inset; }
+.pg-set.is-done { cursor: pointer; }
+
+.pg-session-nav {
+  display: flex; justify-content: space-between; gap: 10px; margin-top: 4px;
+}
+.pg-session-nav .btn { flex: 1; min-width: 0; justify-content: center; }
+.pg-session-nav .btn:only-child { flex: 0 1 auto; }
+
 @media (max-width: 600px) {
   .pg-week-grid { gap: 4px; }
   .pg-cell { min-height: 68px; padding: 6px 4px 4px; }
