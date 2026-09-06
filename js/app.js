@@ -34,7 +34,10 @@
     moon: '<svg viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>',
     expand: '<svg viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M8 21H5a2 2 0 0 1-2-2v-3M16 21h3a2 2 0 0 0 2-2v-3"/></svg>',
     compress: '<svg viewBox="0 0 24 24"><path d="M8 3v3a2 2 0 0 1-2 2H3M16 3v3a2 2 0 0 0 2 2h3M8 21v-3a2 2 0 0 0-2-2H3M16 21v-3a2 2 0 0 1 2-2h3"/></svg>',
-    grid: '<svg viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="8" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/><rect x="13" y="13" width="8" height="8" rx="1.5"/></svg>'
+    grid: '<svg viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="8" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/><rect x="13" y="13" width="8" height="8" rx="1.5"/></svg>',
+    calendar: '<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>',
+    clock: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+    circle: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/></svg>'
   };
   const FILL = new Set(["play", "stop"]);
 
@@ -1371,6 +1374,24 @@
     // Re-render periódico para mantener "hace X tiempo" (opcional, ligero)
     window.addEventListener("beforeunload", save);
   }
+
+  /* ==========================================================================
+     API pública mínima para el módulo "Programa" (js/program.js)
+     ========================================================================== */
+  function startWodById(id) {
+    const wod = window.WODS && window.WODS.find((w) => w.id === id);
+    if (!wod) { toast("Reto no encontrado"); return; }
+    const resolved = resolvePreset(wod);
+    resolved._resolved = resolved;
+    startRunner(resolved);
+  }
+
+  window.AppGym = {
+    hydrateIcons: hydrateIcons,
+    toast: toast,
+    sound: sound,
+    startWodById: startWodById
+  };
 
   document.addEventListener("DOMContentLoaded", init);
 })();
