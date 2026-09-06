@@ -1381,6 +1381,19 @@ body.light .tab.is-active {
 .pg-rest-bar.is-done .pg-rest-label { color: var(--success); }
 .pg-rest-label strong { font-family: var(--font-display); font-size: 1.15rem; letter-spacing: 0.04em; }
 
+.pg-head-actions { display: flex; gap: 6px; flex-wrap: wrap; align-items: flex-start; }
+
+.pg-group { display: flex; flex-direction: column; gap: 10px; }
+.pg-group-head {
+  font-family: var(--font-display); font-size: 0.98rem; font-weight: 700;
+  letter-spacing: 0.03em; color: var(--text); margin-top: 4px;
+}
+.pg-group-note { font-family: var(--font-body); font-size: 0.72rem; font-weight: 500; color: var(--text-faint); letter-spacing: 0; }
+
+.pg-ex-tempo .pg-tempo-fields { display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap; }
+.pg-ex-tempo .pg-tempo-fields .field { margin-bottom: 0; flex: 1; min-width: 90px; }
+.pg-ex-tempo .pg-tempo-fields .btn { flex-shrink: 0; }
+
 @media (max-width: 600px) {
   .pg-week-grid { gap: 4px; }
   .pg-cell { min-height: 68px; padding: 6px 4px 4px; }

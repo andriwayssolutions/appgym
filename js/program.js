@@ -1,9 +1,13 @@
 /* ==========================================================================
    AppGym — Módulo "Programa"
-   Plan de pesas ATHLEAN Inferno / Max-Size. MVP = Fase 1 (semanas 1-4, XV-10).
-   Estado propio en localStorage (clave "appgym:program:v1"), independiente
-   del resto de la app. Reusa TimerEngine (descanso / reloj de finisher) y
-   window.AppGym.startWodById para los retos del sábado.
+   Plan de pesas ATHLEAN Inferno / Max-Size — 12 semanas, 3 fases + cierre.
+     · Fase 1 (sem 1-4)  — IGNITION, método XV-10 ("10-by"), pesos por %1RM.
+     · Fase 2 (sem 5-8)  — AX-RSON: superserie + drop→iso + series rectas, por RM.
+     · Fase 3 (sem 9-11) — BACKFIRE: tempos 1/1/5 y 5/1/1, 50 / 25 reps.
+     · Semana 12         — retos de cierre (Fireman's Carry, Towering Inferno).
+   Estado propio en localStorage ("appgym:program:v1"), independiente del resto
+   de la app. Reusa TimerEngine (descanso / reloj de finisher) y
+   window.AppGym.startWodById para los retos.
    ========================================================================== */
 
 (function () {
@@ -14,17 +18,11 @@
   const STORE_KEY = "appgym:program:v1";
   const LB_PER_KG = 2.2046226;
 
-  /* ======================================================================
-     Definición del programa (Fase 1 · método XV-10 / "10-by")
-     ====================================================================== */
-  const PROGRAM = {
-    id: "ax-max-size",
-    name: "ATHLEAN Inferno · Max/Size",
-    totalWeeks: 12,
-    mvpWeeks: 4
-  };
+  const PROGRAM = { id: "ax-max-size", name: "ATHLEAN Inferno · Max/Size", totalWeeks: 12 };
 
-  // Ejercicios base — se pide el 1RM de cada uno en el onboarding.
+  /* ======================================================================
+     Fase 1 — ejercicios base (se pide el 1RM en el onboarding)
+     ====================================================================== */
   const LIFTS = [
     { id: "incline-bench",     name: "Press Inclinado (barra o mancuernas)", muscle: "Pecho",       finisher: "Flexiones al fallo" },
     { id: "underhand-row",     name: "Remo con Barra Supino",                muscle: "Espalda",     finisher: "Inverted rows al fallo" },
@@ -35,23 +33,12 @@
     { id: "db-shoulder-press", name: "Press Militar con Mancuernas",         muscle: "Hombros",     finisher: "Press neutro DB al 50% del 12RM" },
     { id: "db-high-pull",      name: "High Pull con Mancuernas",             muscle: "Trapecios",   finisher: "Encogimientos DB sentado al 50% del 12RM" }
   ];
-
-  // Pares musculares por día (orden fijo Sem 1). A = 10×10, B = 10×5.
   const DAY_PAIRS = [
-    { day: "mon", a: "incline-bench", b: "underhand-row" },
-    { day: "tue", a: "squat",         b: "deadlift" },
-    { day: "thu", a: "bb-curl",       b: "lying-tri-ext" },
+    { day: "mon", a: "incline-bench",     b: "underhand-row" },
+    { day: "tue", a: "squat",             b: "deadlift" },
+    { day: "thu", a: "bb-curl",           b: "lying-tri-ext" },
     { day: "fri", a: "db-shoulder-press", b: "db-high-pull" }
   ];
-
-  // Reto del sábado por semana (ya cargados en window.WODS como categoría "inferno").
-  const SAT_WOD = { 1: "ax-burn-ladder", 2: "ax-diabol-x", 3: "ax-fire-ice", 4: "ax-you-in-30-push" };
-
-  const DAY_ORDER = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
-  const DAY_LABEL = { mon: "Lun", tue: "Mar", wed: "Mié", thu: "Jue", fri: "Vie", sat: "Sáb", sun: "Dom" };
-  const DAY_FULL  = { mon: "Lunes", tue: "Martes", wed: "Miércoles", thu: "Jueves", fri: "Viernes", sat: "Sábado", sun: "Domingo" };
-
-  function liftById(id) { return LIFTS.find((l) => l.id === id); }
 
   const MUSCLE_SHORT = {
     "Pecho": "Pecho", "Espalda": "Espalda", "Cuádriceps": "Cuádr.", "Isquios": "Isquios",
@@ -61,45 +48,251 @@
   const PRO_PAIN = "Máx repeticiones al fallo. Al terminar la última rep, arrancá el reloj de 4:30 y completá 2× ese número.";
   const ISO_PRO_PAIN = "Hold isométrico 60 s. Después completá el nº de reps de tu fallo original en 9 min; cada vez que descansás, retomás con un hold de 30 s.";
 
-  // Construye la sesión de pesas de un día (semanas 1-4).
-  function buildSession(week, day) {
+  /* ======================================================================
+     Fase 2 — AX-RSON (por músculo)
+     ====================================================================== */
+  const F2_MUSCLES = {
+    "Pecho": {
+      superset: ["Floor Flys", "Press Inclinado"], dropIso: "Floor Flys", straight: "Press de Banca",
+      finisher: { name: "Pec Purgatory", protocol: "3 rondas — DB Incline Bench (midrange) ×F ⇒ Lower Dip Stretch Hold 30 s ⇒ Cable Cross Contraction (burnout)" }
+    },
+    "Tríceps": {
+      superset: ["DB Inverted Kickbacks", "Extensión de Tríceps en Banco Inclinado (DB)"], dropIso: "Extensión de Tríceps en Banco Inclinado (DB)", straight: "Press Cerrado (Close Grip Bench)",
+      finisher: { name: "Steel Moving", protocol: "Triceps Pushdowns (12RM) ×F ⇒ 1½× ese número sin soltar" }
+    },
+    "Cuádriceps": {
+      superset: ["Bulgarian Split Squat (hold al fallo / pierna)", "Sentadilla con Barra"], dropIso: "Sentadilla con Barra", straight: "Zancadas Inversas Alternas (DB)",
+      finisher: { name: "Liquid Legs", protocol: "DB Goblet Squat ×100 total · Wall Sit 1 min en cada minuto par" }
+    },
+    "Isquios": {
+      superset: ["Physioball Glute-Ham Raise", "Hip Thrust con Barra"], dropIso: "Hip Thrust con Barra", straight: "Peso Muerto Rumano (piernas rígidas)",
+      finisher: { name: "Asses to Ashes", protocol: "KB Swings ×100 · Long-Legged Bridge Hold 1 min en minuto par" }
+    },
+    "Hombros": {
+      superset: ["DB Scaptions", "Press Militar (DB)"], dropIso: "Press Militar (DB)", straight: "Clean and Press con Barra",
+      finisher: { name: "Cannonball Run", protocol: "DB Side Laterals (8RM) ×F bajando el rack hasta 10 lb ⇒ DB Shoulder Press ×F subiendo" }
+    },
+    "Trapecios": {
+      superset: ["Encogimientos con Barra", "Face Pulls"], dropIso: "Face Pulls", straight: "High Pulls (DB)",
+      finisher: { name: "Inferno Crossfire", protocol: "3 rondas — Overhead Trap Raises ×30 ⇒ Band Pull-Aparts ×30 ⇒ DB Shrug Holds 30 s" }
+    },
+    "Espalda": {
+      superset: ["Straight-Arm Pushdowns", "Jalón al Pecho (Lat Pulldown)"], dropIso: "Jalón al Pecho (Lat Pulldown)", straight: "Remo con Barra",
+      finisher: { name: "Alphabet Arson", protocol: "3 rondas — Prone Incline DB Y's (15RM) ×F ⇒ T's ×F ⇒ I's ×F ⇒ Hiperextensiones ×F" }
+    },
+    "Bíceps": {
+      superset: ["DB Spider Curls", "Curl con Barra Recta (DB)"], dropIso: "Curl con Barra Recta (DB)", straight: "Curl Martillo (DB)",
+      finisher: { name: "Hang 'Em, Bang 'Em or Burn", protocol: "Standing DB Curls (12RM) ×F ⇒ 1½× ese número sin soltar" }
+    }
+  };
+  const F2_DAYS = [
+    { day: "mon", muscles: ["Pecho", "Tríceps"] },
+    { day: "tue", muscles: ["Cuádriceps", "Isquios"] },
+    { day: "thu", muscles: ["Hombros", "Trapecios"] },
+    { day: "fri", muscles: ["Espalda", "Bíceps"] }
+  ];
+
+  /* ======================================================================
+     Fase 3 — BACKFIRE (tempos)
+     ====================================================================== */
+  const F3_DAYS = {
+    mon: { title: "Empuje · Concéntrico",  block: "push",  mode: "conc" },
+    tue: { title: "Empuje · Excéntrico",   block: "push",  mode: "ecc" },
+    thu: { title: "Tirón · Concéntrico",   block: "pull",  mode: "conc" },
+    fri: { title: "Tirón · Excéntrico",    block: "pull",  mode: "ecc" },
+    sun: { title: "Empuje B · Concéntrico", block: "pushB", mode: "conc" }
+  };
+  const F3_SHORT = {
+    mon: "Empuje conc.", tue: "Empuje excén.", thu: "Tirón conc.", fri: "Tirón excén.", sun: "Empuje B"
+  };
+  const F3_MOVES = {
+    push:  ["Press de Banca (DB)", "Fondos (Dips)", "Thrusters (DB)", "Sentadilla Frontal"],
+    pull:  ["Jalón Supino al Pecho", "Curl Inclinado Variable (DB)", "Encogimiento Sentado (DB)", "Physioball Glute-Ham Raise"],
+    pushB: ["Floor Flys", "Elevaciones Laterales Cruzadas (DB)", "Peso Muerto con Barra", "Phelps Press (DB)"]
+  };
+  const F3_FINISHERS_W9 = {
+    mon: "1 milla de carrera",
+    tue: "Circuito de flexibilidad estática",
+    thu: "Agility Wheel · 5-8 rondas",
+    fri: "Crawl Circuit — Alpine Climbers · Kickthroughs · Scorpions · Crab Stretch",
+    sun: "Jump Rope · 800 saltos"
+  };
+  const F3_PILLARS = "Athletic Pillars — Static Balance · Dynamic Balance · Dynamic Flexibility · Locomotion";
+
+  /* ======================================================================
+     Calendario — días / retos / fases
+     ====================================================================== */
+  const SAT_WOD = {
+    1: "ax-burn-ladder", 2: "ax-diabol-x", 3: "ax-fire-ice", 4: "ax-you-in-30-push",
+    5: "ax-bump-run", 6: "ax-sprint-ladder", 7: "ax-tracknophobia", 8: "ax-hot-plate"
+  };
+  const DAY_ORDER = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
+  const DAY_LABEL = { mon: "Lun", tue: "Mar", wed: "Mié", thu: "Jue", fri: "Vie", sat: "Sáb", sun: "Dom" };
+  const DAY_FULL  = { mon: "Lunes", tue: "Martes", wed: "Miércoles", thu: "Jueves", fri: "Viernes", sat: "Sábado", sun: "Domingo" };
+
+  function phaseOf(week) { if (week <= 4) return 1; if (week <= 8) return 2; if (week <= 11) return 3; return 12; }
+  function phaseTag(week) {
+    return { 1: "Fase 1 · Ignition", 2: "Fase 2 · AX-RSON", 3: "Fase 3 · Backfire", 12: "Semana de cierre" }[phaseOf(week)];
+  }
+  function liftById(id) { return LIFTS.find((l) => l.id === id); }
+  function slug(s) {
+    return String(s).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "")
+      .replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  }
+
+  /* ======================================================================
+     Construcción de sesiones
+     ====================================================================== */
+  // Fase 1 — XV-10
+  function buildF1Session(week, day) {
     const pair = DAY_PAIRS.find((p) => p.day === day);
     if (!pair) return null;
-    const swap = week % 2 === 0;          // Sem 2 y 4: se invierte A/B
-    const alternate = week >= 3;          // Sem 3 y 4: series alternadas
-    const bigId = swap ? pair.b : pair.a; // el que hace 10×10
+    const swap = week % 2 === 0;
+    const alternate = week >= 3;
+    const bigId = swap ? pair.b : pair.a;
     const smallId = swap ? pair.a : pair.b;
-    const big = liftById(bigId);
-    const small = liftById(smallId);
-    const isoWeek = week >= 3;
+    const big = liftById(bigId), small = liftById(smallId);
+    const isoWk = week >= 3;
+
+    const grp = (lift, sets, reps, pct, tag) => {
+      const ww = workWeight(lift.id, pct);
+      return {
+        label: tag,
+        exercises: [{
+          key: lift.id, movementSlug: lift.id, name: lift.name, muscle: lift.muscle,
+          sets: sets, reps: reps, restSec: 60,
+          loadHint: ww != null ? fmtWeight(ww) : "definí tu 1RM",
+          prefillKg: ww != null ? ww : null
+        }]
+      };
+    };
+    const fin = (lift) => ({
+      key: lift.id + "-fin", kind: "propain", muscle: lift.muscle, movement: lift.finisher,
+      protocol: isoWk ? ISO_PRO_PAIN : PRO_PAIN, clockSec: isoWk ? 540 : 270,
+      label: isoWk ? "ISO-PRO-PAIN" : "PRO-PAIN"
+    });
 
     return {
-      id: week + "-" + day,
-      week: week,
-      day: day,
+      id: week + "-" + day, week: week, day: day, phase: 1,
       title: big.muscle + " / " + small.muscle,
       titleShort: MUSCLE_SHORT[big.muscle] + " / " + MUSCLE_SHORT[small.muscle],
-      method: alternate ? "XV-10 · series alternadas" : "XV-10",
+      method: alternate ? "XV-10 · alternado" : "XV-10",
       note: alternate
         ? "Alterná una serie de A y una de B hasta completar las 20. Descanso ~1 min entre series."
         : "Terminá las 10 series de A antes de pasar a B. Descanso 1 min dentro de cada 10-by, 3-5 min entre los dos.",
-      exercises: [
-        { liftId: bigId,   name: big.name,   muscle: big.muscle,   sets: 10, reps: 10, loadPct: 0.60, restSec: 60, tag: "A · 10 × 10 @ 60%" },
-        { liftId: smallId, name: small.name, muscle: small.muscle, sets: 10, reps: 5,  loadPct: 0.75, restSec: 60, tag: "B · 10 × 5 @ 75% (8RM)" }
-      ],
-      finishers: [
-        { key: bigId + "-fin",   muscle: big.muscle,   movement: big.finisher,   protocol: isoWeek ? ISO_PRO_PAIN : PRO_PAIN, clockSec: isoWeek ? 540 : 270, label: isoWeek ? "ISO-PRO-PAIN" : "PRO-PAIN" },
-        { key: smallId + "-fin", muscle: small.muscle, movement: small.finisher, protocol: isoWeek ? ISO_PRO_PAIN : PRO_PAIN, clockSec: isoWeek ? 540 : 270, label: isoWeek ? "ISO-PRO-PAIN" : "PRO-PAIN" }
-      ]
+      groups: [grp(big, 10, 10, 0.60, "A · 10 × 10 @ 60%"), grp(small, 10, 5, 0.75, "B · 10 × 5 @ 75% (8RM)")],
+      finishers: [fin(big), fin(small)]
     };
   }
 
-  // Plan de una semana: 7 celdas (lift / off / challenge).
+  // Fase 2 — AX-RSON
+  function buildF2Session(week, day) {
+    const dd = F2_DAYS.find((d) => d.day === day);
+    if (!dd) return null;
+    const groups = [];
+    const finishers = [];
+
+    dd.muscles.forEach((m) => {
+      const x = F2_MUSCLES[m];
+      const base = week + "-" + day + "-" + slug(m);
+      groups.push({
+        label: "Superserie · " + m, note: "6-9RM cada uno · 2 min descanso",
+        exercises: x.superset.map((n, i) => ({
+          key: base + "-ss" + i, movementSlug: slug(n), name: n,
+          sets: 2, restSec: 120, loadHint: "6-9RM"
+        }))
+      });
+      groups.push({
+        label: "Drop → iso · " + m, note: "10RM ×8 reps → hold isométrico al fallo · 90 s",
+        exercises: [{
+          key: base + "-drop", movementSlug: slug(x.dropIso), name: x.dropIso,
+          sets: 3, reps: 8, restSec: 90, loadHint: "10RM → hold"
+        }]
+      });
+      groups.push({
+        label: "Series rectas · " + m, note: "6-9RM · 60 s",
+        exercises: [{
+          key: base + "-str", movementSlug: slug(x.straight), name: x.straight,
+          sets: 5, restSec: 60, loadHint: "6-9RM"
+        }]
+      });
+      if (week <= 6) {
+        finishers.push({ key: slug(m) + "-fin", kind: "note", name: x.finisher.name, muscle: m, protocol: x.finisher.protocol });
+      } else {
+        finishers.push({
+          key: slug(m) + "-fin", kind: "note", name: "Finisher de " + m + " · Semana " + week, muscle: m,
+          protocol: "El handoff no detalla los finishers de las semanas 7-8. Elegí el del PDF (Smoldering Shoulders, Entrapment, Ladder 8, Fire Pit, Fire on the Floor, Tri-al by Fire, Blast Off, 3rd Degree Lunges…)."
+        });
+      }
+    });
+
+    return {
+      id: week + "-" + day, week: week, day: day, phase: 2,
+      title: dd.muscles.join(" / "),
+      titleShort: dd.muscles.map((m) => MUSCLE_SHORT[m]).join(" / "),
+      method: "AX-RSON",
+      note: "Por cada músculo: superserie ×2 (6-9RM, 2 min) · drop→iso ×3 (10RM×8 → hold, 90 s) · series rectas ×5 (6-9RM, 60 s). Registrá el peso real de cada serie.",
+      groups: groups, finishers: finishers
+    };
+  }
+
+  // Fase 3 — BACKFIRE (tempos)
+  function buildF3Session(week, day) {
+    const d = F3_DAYS[day];
+    if (!d) return null;
+    const conc = d.mode === "conc";
+    const target = conc ? 50 : 25;
+    const tempo = conc ? "1 / 1 / 5" : "5 / 1 / 1";
+    const loadHint = conc ? "12RM" : "6RM";
+    const restNote = conc ? "60 s de estiramiento" : "60 s de flexión (flexing)";
+    const moves = F3_MOVES[d.block];
+
+    const exercises = moves.map((n, i) => ({
+      key: week + "-" + day + "-" + i, movementSlug: slug(n), name: n,
+      targetReps: target, tempo: tempo, loadHint: loadHint, restSec: 60, restNote: restNote
+    }));
+
+    const finText = week === 9 ? F3_FINISHERS_W9[day] : F3_PILLARS;
+
+    return {
+      id: week + "-" + day, week: week, day: day, phase: 3,
+      title: d.title, titleShort: F3_SHORT[day],
+      method: "Backfire · tempo " + tempo,
+      note: loadHint + " · tempo " + tempo + " · " + target + " reps por ejercicio · descanso: " + restNote + ".",
+      groups: [{
+        label: (conc ? "Concéntrico" : "Excéntrico") + " · " + moves.length + " ejercicios",
+        note: target + " reps c/u",
+        exercises: exercises
+      }],
+      finishers: [{ key: week + "-" + day + "-fin", kind: "note", name: "Finisher", protocol: finText }]
+    };
+  }
+
+  function buildSession(week, day) {
+    const ph = phaseOf(week);
+    if (ph === 1) return buildF1Session(week, day);
+    if (ph === 2) return buildF2Session(week, day);
+    if (ph === 3) return buildF3Session(week, day);
+    return null;
+  }
+
+  // Plan de una semana: 7 celdas
   function weekPlan(week) {
+    const ph = phaseOf(week);
     return DAY_ORDER.map((day) => {
+      if (ph === 12) {
+        if (day === "thu") return { day: day, kind: "challenge", wodId: "ax-firemans-carry", label: "Reto final" };
+        if (day === "fri") return { day: day, kind: "challenge", wodId: "ax-towering-inferno", label: "Reto final" };
+        return { day: day, kind: "off", label: "Descanso" };
+      }
+      if (ph === 3) {
+        if (day === "wed" || day === "sat") return { day: day, kind: "off", label: "Descanso" };
+        const s = buildF3Session(week, day);
+        return { day: day, kind: "lift", label: s.title, labelShort: s.titleShort, sessionId: s.id };
+      }
       if (day === "wed" || day === "sun") return { day: day, kind: "off", label: "Descanso" };
       if (day === "sat") return { day: day, kind: "challenge", wodId: SAT_WOD[week], label: "Reto" };
-      const s = buildSession(week, day);
+      const s = ph === 1 ? buildF1Session(week, day) : buildF2Session(week, day);
       return { day: day, kind: "lift", label: s.title, labelShort: s.titleShort, sessionId: s.id };
     });
   }
@@ -110,14 +303,7 @@
   /* ======================================================================
      Estado
      ====================================================================== */
-  const DEFAULTS = {
-    unit: "kg",        // "kg" | "lb" — solo afecta la visualización
-    startDate: null,   // ISO "YYYY-MM-DD" del lunes de la semana 1
-    rms: {},           // { liftId: kg }  (siempre guardado en kg)
-    done: {},          // { "1-mon": true }
-    log: {}            // { "1-mon": { date, sets: { liftId: [{w,r,ts}] }, finishers: { key: {fail} } } }
-  };
-
+  const DEFAULTS = { unit: "kg", startDate: null, rms: {}, done: {}, log: {} };
   let st = load();
 
   function load() {
@@ -133,16 +319,13 @@
       });
     } catch (e) { return base; }
   }
-  function save() {
-    try { localStorage.setItem(STORE_KEY, JSON.stringify(st)); } catch (e) { /* noop */ }
-  }
+  function save() { try { localStorage.setItem(STORE_KEY, JSON.stringify(st)); } catch (e) { /* noop */ } }
 
   /* ======================================================================
      Unidades y pesos de trabajo
      ====================================================================== */
   const U = () => st.unit;
   const stepFor = () => (st.unit === "lb" ? 5 : 2.5);
-
   function kgToDisplay(kg) { return st.unit === "lb" ? kg * LB_PER_KG : kg; }
   function displayToKg(v) { return st.unit === "lb" ? v / LB_PER_KG : v; }
   function roundStep(v) { const s = stepFor(); return Math.round(v / s) * s; }
@@ -150,31 +333,23 @@
     const n = Math.round(v * 10) / 10;
     return (Number.isInteger(n) ? n : n.toFixed(1)) + " " + U();
   }
-
-  // Peso de trabajo mostrado (en la unidad activa) para un lift a cierto %.
   function workWeight(liftId, pct) {
     const rmKg = st.rms[liftId];
     if (!rmKg || rmKg <= 0) return null;
     return roundStep(kgToDisplay(rmKg * pct));
   }
-
   function hasAllRMs() { return LIFTS.every((l) => st.rms[l.id] > 0); }
 
   /* ======================================================================
-     Fechas del calendario
+     Fechas
      ====================================================================== */
-  function parseISO(s) {
-    if (!s) return null;
-    const p = s.split("-");
-    return new Date(+p[0], +p[1] - 1, +p[2]);
-  }
+  function parseISO(s) { if (!s) return null; const p = s.split("-"); return new Date(+p[0], +p[1] - 1, +p[2]); }
   function toISO(d) {
     return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
   }
   function thisWeekMonday() {
     const d = new Date(); d.setHours(0, 0, 0, 0);
-    const dow = (d.getDay() + 6) % 7; // lun = 0
-    d.setDate(d.getDate() - dow);
+    d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
     return d;
   }
   function cellDate(week, day) {
@@ -188,12 +363,9 @@
     return a && b && a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
   }
   function fmtDayMonth(d) { return d.getDate() + "/" + (d.getMonth() + 1); }
-
   function relativeDays(ts) {
     const days = Math.floor((Date.now() - ts) / 86400000);
-    if (days <= 0) return "hoy";
-    if (days === 1) return "ayer";
-    return "hace " + days + " días";
+    if (days <= 0) return "hoy"; if (days === 1) return "ayer"; return "hace " + days + " días";
   }
 
   /* ======================================================================
@@ -201,7 +373,7 @@
      ====================================================================== */
   function allCells() {
     const out = [];
-    for (let w = 1; w <= PROGRAM.mvpWeeks; w++) {
+    for (let w = 1; w <= PROGRAM.totalWeeks; w++) {
       weekPlan(w).forEach((c) => out.push(Object.assign({ week: w }, c)));
     }
     return out;
@@ -216,28 +388,19 @@
   }
 
   /* ======================================================================
-     Iconos (reusa el hidratador de app.js)
+     Helpers de app.js
      ====================================================================== */
-  function hydrate(root) {
-    if (window.AppGym && typeof window.AppGym.hydrateIcons === "function") window.AppGym.hydrateIcons(root);
-  }
-  function toast(msg) {
-    if (window.AppGym && typeof window.AppGym.toast === "function") window.AppGym.toast(msg);
-  }
-  function sound(kind) {
-    if (window.AppGym && typeof window.AppGym.sound === "function") window.AppGym.sound(kind);
-  }
+  function hydrate(root) { if (window.AppGym && window.AppGym.hydrateIcons) window.AppGym.hydrateIcons(root); }
+  function toast(msg) { if (window.AppGym && window.AppGym.toast) window.AppGym.toast(msg); }
+  function sound(kind) { if (window.AppGym && window.AppGym.sound) window.AppGym.sound(kind); }
   function esc(s) {
     return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   }
 
   /* ======================================================================
-     Timers (descanso entre series + reloj de finisher)
+     Timers
      ====================================================================== */
-  let restTimer = null;
-  let restLeft = "";
-  let restDone = false;
-
+  let restTimer = null, restLeft = "", restDone = false;
   function ensureRestTimer() {
     if (restTimer) return;
     restTimer = new window.TimerEngine({
@@ -247,21 +410,12 @@
     });
   }
   function startRest(sec) {
-    ensureRestTimer();
-    restDone = false;
+    ensureRestTimer(); restDone = false;
     restTimer.configure({ mode: "countdown", durationSec: sec });
-    restTimer.start();
-    paintRestBar();
+    restTimer.start(); paintRestBar();
   }
-  function stopRest() {
-    if (restTimer) restTimer.reset();
-    restDone = false;
-    restLeft = "";
-    paintRestBar();
-  }
-  function restActive() {
-    return !!restTimer && (restTimer.running || restDone);
-  }
+  function stopRest() { if (restTimer) restTimer.reset(); restDone = false; restLeft = ""; paintRestBar(); }
+  function restActive() { return !!restTimer && (restTimer.running || restDone); }
   function paintRestBar() {
     const bar = $("#pgRestBar");
     if (!bar) return;
@@ -276,9 +430,7 @@
     hydrate(bar);
   }
 
-  let finTimer = null;
-  let finState = null; // { key, left, count, running, done }
-
+  let finTimer = null, finState = null;
   function ensureFinTimer() {
     if (finTimer) return;
     finTimer = new window.TimerEngine({
@@ -291,13 +443,9 @@
     ensureFinTimer();
     finState = { key: key, left: window.fmtTime(sec * 1000), count: 0, running: true, done: false };
     finTimer.configure({ mode: "countdown", durationSec: sec });
-    finTimer.start();
-    render();
+    finTimer.start(); render();
   }
-  function stopFinClock() {
-    if (finTimer) finTimer.reset();
-    finState = null;
-  }
+  function stopFinClock() { if (finTimer) finTimer.reset(); finState = null; }
   function paintFinClock() {
     const box = $("#pgFinClock");
     if (!box || !finState) return;
@@ -309,14 +457,17 @@
   /* ======================================================================
      Vistas
      ====================================================================== */
-  let screen = "calendar";      // "onboarding" | "calendar" | "session"
-  let sessionRef = null;        // sesión abierta
-  let editing = null;           // { liftId, index } — serie en edición
+  let screen = "calendar";
+  let sessionRef = null;
+  let editing = null;            // { key, index }
+  let confirmingReset = false;
 
   function root() { return $("#view-program"); }
 
   function go(next) {
     if (screen === "session" && next !== "session") { stopRest(); stopFinClock(); }
+    editing = null;
+    confirmingReset = false;
     screen = next;
     render();
     root().scrollIntoView({ block: "start" });
@@ -332,7 +483,7 @@
     if (screen === "session") paintRestBar();
   }
 
-  /* ---------- Onboarding de RMs ---------- */
+  /* ---------- Onboarding ---------- */
   function viewOnboarding() {
     const rows = LIFTS.map((l) => {
       const rmKg = st.rms[l.id];
@@ -348,20 +499,18 @@
         "</div>"
       );
     }).join("");
-
     const startVal = st.startDate || toISO(thisWeekMonday());
 
     return (
       '<div class="pg-wrap">' +
       '<div class="pg-head">' +
       '<div><h2 class="pg-title">Tus marcas (1RM)</h2>' +
-      '<p class="pg-sub">La Fase 1 usa el 60% y el 75% de tu 1RM. Cargá lo que levantás hoy — podés ajustarlo cuando quieras.</p></div>' +
+      '<p class="pg-sub">La Fase 1 calcula los pesos con el 60% y el 75% de tu 1RM. Las Fases 2 y 3 se registran por sensación (RM objetivo), no hace falta cargar nada más.</p></div>' +
       (hasAllRMs() ? '<button class="btn btn-ghost btn-sm" id="pgToCal"><span data-icon="undo"></span> Volver</button>' : "") +
       "</div>" +
 
       '<div class="pg-card">' +
-      '<div class="pg-field-inline">' +
-      '<span class="field-label">Unidad</span>' +
+      '<div class="pg-field-inline"><span class="field-label">Unidad</span>' +
       '<div class="segmented pg-unit" id="pgUnit">' +
       '<button class="seg' + (U() === "kg" ? " is-active" : "") + '" data-unit="kg">kg</button>' +
       '<button class="seg' + (U() === "lb" ? " is-active" : "") + '" data-unit="lb">lb</button>' +
@@ -371,7 +520,6 @@
       "</div>" +
 
       '<div class="pg-card"><div class="pg-rm-list">' + rows + "</div></div>" +
-
       '<button class="btn btn-primary btn-block" id="pgSaveRM"><span data-icon="check"></span> Guardar y ver el calendario</button>' +
       "</div>"
     );
@@ -381,11 +529,11 @@
   function viewCalendar() {
     const pr = progress();
     const nc = nextCell();
-    const curWeek = nc ? nc.week : PROGRAM.mvpWeeks;
+    const curWeek = nc ? nc.week : PROGRAM.totalWeeks;
     const today = new Date(); today.setHours(0, 0, 0, 0);
 
     const weeks = [];
-    for (let w = 1; w <= PROGRAM.mvpWeeks; w++) {
+    for (let w = 1; w <= PROGRAM.totalWeeks; w++) {
       const cells = weekPlan(w).map((c) => {
         const cid = cellId(w, c.day);
         const done = !!st.done[cid];
@@ -411,185 +559,255 @@
       weeks.push(
         '<div class="pg-week">' +
         '<div class="pg-week-head"><span>Semana ' + w + "</span>" +
-        (w <= 4 ? '<span class="pg-phase-tag">Fase 1 · Ignition</span>' : "") + "</div>" +
+        '<span class="pg-phase-tag">' + esc(phaseTag(w)) + "</span></div>" +
         '<div class="pg-week-grid">' + cells + "</div>" +
         "</div>"
       );
     }
 
-    let cta = "";
+    let cta;
     if (nc) {
-      const label = nc.kind === "challenge" ? "Reto del sábado (Semana " + nc.week + ")" : nc.label + " — Semana " + nc.week;
+      const label = nc.kind === "challenge"
+        ? "Reto — Semana " + nc.week
+        : (nc.labelShort || nc.label) + " — Semana " + nc.week;
       cta = '<button class="btn btn-primary btn-block" id="pgContinue"><span data-icon="play"></span> Continuar: ' + esc(label) + "</button>";
     } else {
-      cta = '<div class="pg-done-banner"><span data-icon="check"></span> ¡Fase 1 completa! Fases 2 y 3 (semanas 5-12) próximamente.</div>';
+      cta = '<div class="pg-done-banner"><span data-icon="check"></span> ¡Programa completo! 12 semanas.</div>';
     }
 
     const rmWarn = hasAllRMs() ? "" :
-      '<div class="pg-warn"><span data-icon="clock"></span> Cargá tus 1RM para ver los pesos de trabajo. <button class="pg-link" id="pgEditRM">Hacerlo ahora</button></div>';
+      '<div class="pg-warn"><span data-icon="clock"></span> Cargá tus 1RM para ver los pesos de la Fase 1. <button class="pg-link" id="pgEditRM">Hacerlo ahora</button></div>';
+
+    const resetBtns = confirmingReset
+      ? '<button class="btn btn-danger btn-sm" id="pgResetYes">Borrar progreso</button>' +
+        '<button class="btn btn-ghost btn-sm" id="pgResetNo">Cancelar</button>'
+      : '<button class="btn btn-ghost btn-sm" id="pgReset"><span data-icon="reset"></span> Reiniciar</button>';
 
     return (
       '<div class="pg-wrap">' +
       '<div class="pg-head">' +
       '<div><h2 class="pg-title">' + esc(PROGRAM.name) + "</h2>" +
-      '<p class="pg-sub">Semana ' + curWeek + " de " + PROGRAM.totalWeeks + " · " + pr.done + "/" + pr.total + " sesiones de la Fase 1</p></div>" +
+      '<p class="pg-sub">Semana ' + curWeek + " de " + PROGRAM.totalWeeks + " · " + esc(phaseTag(curWeek)) + " · " + pr.done + "/" + pr.total + " sesiones hechas</p></div>" +
+      '<div class="pg-head-actions">' +
       '<button class="btn btn-ghost btn-sm" id="pgEditRM"><span data-icon="edit"></span> RMs</button>' +
+      resetBtns +
+      "</div>" +
       "</div>" +
       '<div class="pg-progress"><div class="pg-progress-fill" style="width:' + pr.pct + '%"></div></div>' +
+      (confirmingReset ? '<div class="pg-warn"><span data-icon="reset"></span> Se borran los días hechos y el registro de series. Tus 1RM y la fecha de inicio se mantienen.</div>' : "") +
       rmWarn +
       cta +
       '<div class="pg-weeks">' + weeks.join("") + "</div>" +
-      '<p class="pg-foot">Método XV-10 (“10-by”): un ejercicio a 10×10 (60% 1RM) y otro a 10×5 (75%). ' +
-      "Semanas 1-2 en bloque, 3-4 alternando series. Los sábados son los retos (pestaña Rutinas → Retos).</p>" +
+      '<p class="pg-foot">Fase 1 (sem 1-4): XV-10, pesos por %1RM. Fase 2 (sem 5-8): AX-RSON, superserie + drop→iso + series rectas por RM. ' +
+      "Fase 3 (sem 9-11): Backfire, tempos 1/1/5 y 5/1/1. Los retos (sábados + cierre) están en Rutinas → Retos.</p>" +
       "</div>"
     );
   }
 
-  /* ---------- Sesión de pesas ---------- */
+  /* ---------- Sesión ---------- */
   function openSession(cid) {
     const p = cid.split("-");
     const week = +p[0], day = p[1];
-    if (day === "sat") {
-      const wodId = SAT_WOD[week];
-      if (wodId && window.AppGym && window.AppGym.startWodById) {
-        toast("Al terminar el reto, marcá el sábado como hecho en el calendario.");
-        window.AppGym.startWodById(wodId);
-      } else {
-        toast("Reto no disponible.");
-      }
+    const plan = weekPlan(week).find((c) => c.day === day);
+    if (plan && plan.kind === "challenge") {
+      if (plan.wodId && window.AppGym && window.AppGym.startWodById) {
+        toast("Al terminar el reto, marcá el día como hecho en el calendario.");
+        window.AppGym.startWodById(plan.wodId);
+      } else { toast("Reto no disponible."); }
       return;
     }
-    sessionRef = buildSession(week, day);
+    const s = buildSession(week, day);
+    if (!s) { toast("Sin sesión para ese día."); return; }
+    if (phaseOf(week) === 1 && !hasAllRMs()) { toast("Primero cargá tus 1RM."); go("onboarding"); return; }
+    sessionRef = s;
     editing = null;
-    if (!hasAllRMs()) { toast("Primero cargá tus 1RM."); go("onboarding"); return; }
     go("session");
   }
 
   function sessionLog() {
     const cid = sessionRef.id;
     if (!st.log[cid]) st.log[cid] = { date: toISO(new Date()), sets: {}, finishers: {} };
+    if (!st.log[cid].sets) st.log[cid].sets = {};
+    if (!st.log[cid].finishers) st.log[cid].finishers = {};
     return st.log[cid];
   }
-  function setsFor(liftId) {
+  function setsFor(key) {
     const lg = st.log[sessionRef.id];
-    return (lg && lg.sets && lg.sets[liftId]) ? lg.sets[liftId] : [];
+    return (lg && lg.sets && lg.sets[key]) ? lg.sets[key] : [];
   }
-
-  // Última vez que se hizo este lift en cualquier sesión previa (para "última vez: …").
-  function lastTimeFor(liftId) {
+  function lastTimeFor(movementSlug, exKey) {
     let best = null;
     Object.keys(st.log).forEach((cid) => {
-      if (cid === (sessionRef && sessionRef.id)) return;
-      const s = st.log[cid].sets && st.log[cid].sets[liftId];
-      if (s && s.length) {
-        const last = s[s.length - 1];
-        if (!best || last.ts > best.ts) best = { w: last.w, r: last.r, ts: last.ts, count: s.length };
-      }
+      const sets = st.log[cid].sets || {};
+      Object.keys(sets).forEach((k) => {
+        (sets[k] || []).forEach((rec) => {
+          const match = rec.m === movementSlug || k === movementSlug;
+          const sameSlot = cid === (sessionRef && sessionRef.id) && k === exKey;
+          if (match && !sameSlot) {
+            if (!best || rec.ts > best.ts) best = { w: rec.w, r: rec.r, ts: rec.ts, count: (sets[k] || []).length };
+          }
+        });
+      });
     });
     return best;
+  }
+
+  function slotTotal(ex) { return ex.targetReps ? 1 : ex.sets; }
+  function slotDone(ex) {
+    const n = setsFor(ex.key).length;
+    return ex.targetReps ? (n > 0 ? 1 : 0) : Math.min(ex.sets, n);
+  }
+  function sessionProgress() {
+    let done = 0, total = 0;
+    sessionRef.groups.forEach((g) => g.exercises.forEach((ex) => { total += slotTotal(ex); done += slotDone(ex); }));
+    return { done: done, total: total };
+  }
+
+  function exCardChips(ex) {
+    const logged = setsFor(ex.key);
+    const firstPending = logged.length;
+    const allDone = logged.length >= ex.sets;
+    const last = lastTimeFor(ex.movementSlug, ex.key);
+
+    const chips = Array.from({ length: ex.sets }, (_, i) => {
+      const rec = logged[i];
+      let c = "pg-set";
+      if (rec) c += " is-done";
+      else if (i === firstPending) c += " is-next";
+      const inner = rec
+        ? '<span class="pg-set-w">' + rec.w + '</span><span class="pg-set-r">×' + rec.r + "</span>"
+        : '<span class="pg-set-n">' + (i + 1) + "</span>";
+      const attr = rec ? "" : ' data-set="' + ex.key + "|" + i + '"';
+      return '<button class="' + c + '"' + attr + ">" + inner + "</button>";
+    }).join("");
+
+    let editor = "";
+    if (editing && editing.key === ex.key) {
+      const prefW = logged.length ? logged[logged.length - 1].w : (last ? last.w : (ex.prefillKg != null ? ex.prefillKg : ""));
+      editor =
+        '<div class="pg-set-editor">' +
+        '<div class="pg-set-editor-title">Serie ' + (editing.index + 1) + " de " + ex.sets + " · " + esc(ex.loadHint) + "</div>" +
+        '<div class="pg-set-editor-fields">' +
+        '<label class="field"><span class="field-label">Peso (' + U() + ')</span>' +
+        '<input type="number" inputmode="decimal" step="' + stepFor() + '" id="pgSetW" value="' + prefW + '" /></label>' +
+        '<label class="field"><span class="field-label">Reps</span>' +
+        '<input type="number" inputmode="numeric" id="pgSetR" value="' + (ex.reps || "") + '" /></label>' +
+        "</div>" +
+        '<div class="pg-set-editor-actions">' +
+        '<button class="btn btn-ghost btn-sm" id="pgSetCancel">Cancelar</button>' +
+        '<button class="btn btn-primary btn-sm" id="pgSetSave"><span data-icon="check"></span> Guardar serie</button>' +
+        "</div></div>";
+    }
+
+    const lastTxt = last
+      ? '<div class="pg-last">Última vez: ' + last.count + " series · " + last.w + " " + U() + " × " + last.r + " (" + relativeDays(last.ts) + ")</div>"
+      : "";
+
+    return (
+      '<div class="pg-ex' + (allDone ? " is-complete" : "") + '">' +
+      '<div class="pg-ex-head"><span class="pg-ex-tag">' + esc(ex.loadHint) + '</span>' +
+      '<span class="pg-ex-count">' + logged.length + "/" + ex.sets + "</span></div>" +
+      '<h3 class="pg-ex-name">' + esc(ex.name) + "</h3>" +
+      lastTxt +
+      '<div class="pg-set-grid">' + chips + "</div>" +
+      editor +
+      "</div>"
+    );
+  }
+
+  function exCardTempo(ex) {
+    const logged = setsFor(ex.key);
+    const rec = logged[0];
+    const done = rec && rec.r >= ex.targetReps;
+    const last = lastTimeFor(ex.movementSlug, ex.key);
+    const lastTxt = last
+      ? '<div class="pg-last">Última vez: ' + last.w + " " + U() + " × " + last.r + " reps (" + relativeDays(last.ts) + ")</div>"
+      : "";
+    return (
+      '<div class="pg-ex pg-ex-tempo' + (rec ? " is-complete" : "") + '">' +
+      '<div class="pg-ex-head"><span class="pg-ex-tag">Tempo ' + esc(ex.tempo) + ' · ' + esc(ex.loadHint) + '</span>' +
+      '<span class="pg-ex-count">' + (rec ? (done ? "✓" : rec.r + "/" + ex.targetReps) : "—") + "</span></div>" +
+      '<h3 class="pg-ex-name">' + esc(ex.name) + "</h3>" +
+      '<div class="pg-ex-target">Objetivo: <strong>' + ex.targetReps + " reps</strong> · descanso " + esc(ex.restNote) + "</div>" +
+      lastTxt +
+      '<div class="pg-tempo-fields">' +
+      '<label class="field"><span class="field-label">Peso (' + U() + ')</span>' +
+      '<input type="number" inputmode="decimal" step="' + stepFor() + '" data-tw="' + ex.key + '" value="' + (rec ? rec.w : (last ? last.w : "")) + '" /></label>' +
+      '<label class="field"><span class="field-label">Reps hechas</span>' +
+      '<input type="number" inputmode="numeric" data-tr="' + ex.key + '" value="' + (rec ? rec.r : "") + '" placeholder="' + ex.targetReps + '" /></label>' +
+      '<button class="btn btn-primary btn-sm" data-tsave="' + ex.key + '"><span data-icon="check"></span> Guardar</button>' +
+      "</div>" +
+      "</div>"
+    );
   }
 
   function viewSession() {
     const s = sessionRef;
     const d = cellDate(s.week, s.day);
-    const dateTxt = d ? " · " + DAY_FULL[s.day] + " " + fmtDayMonth(d) : " · " + DAY_FULL[s.day];
+    const dateTxt = " · " + DAY_FULL[s.day] + (d ? " " + fmtDayMonth(d) : "");
 
-    const exCards = s.exercises.map((ex) => {
-      const ww = workWeight(ex.liftId, ex.loadPct);
-      const logged = setsFor(ex.liftId);
-      const doneCount = logged.length;
-      const allDone = doneCount >= ex.sets;
-      const firstPending = doneCount; // índice de la próxima serie
-      const last = lastTimeFor(ex.liftId);
-
-      const chips = Array.from({ length: ex.sets }, (_, i) => {
-        const rec = logged[i];
-        let c = "pg-set";
-        if (rec) c += " is-done";
-        else if (i === firstPending) c += " is-next";
-        const inner = rec
-          ? '<span class="pg-set-w">' + rec.w + "</span><span class=\"pg-set-r\">×" + rec.r + "</span>"
-          : '<span class="pg-set-n">' + (i + 1) + "</span>";
-        const attr = rec ? "" : ' data-set="' + ex.liftId + "|" + i + '"';
-        return '<button class="' + c + '"' + attr + ">" + inner + "</button>";
-      }).join("");
-
-      let editor = "";
-      if (editing && editing.liftId === ex.liftId) {
-        const prefW = logged.length ? logged[logged.length - 1].w : (ww != null ? ww : "");
-        editor =
-          '<div class="pg-set-editor">' +
-          '<div class="pg-set-editor-title">Serie ' + (editing.index + 1) + " de " + ex.sets + "</div>" +
-          '<div class="pg-set-editor-fields">' +
-          '<label class="field"><span class="field-label">Peso (' + U() + ")</span>" +
-          '<input type="number" inputmode="decimal" step="' + stepFor() + '" id="pgSetW" value="' + prefW + '" /></label>' +
-          '<label class="field"><span class="field-label">Reps</span>' +
-          '<input type="number" inputmode="numeric" id="pgSetR" value="' + ex.reps + '" /></label>' +
-          "</div>" +
-          '<div class="pg-set-editor-actions">' +
-          '<button class="btn btn-ghost btn-sm" id="pgSetCancel">Cancelar</button>' +
-          '<button class="btn btn-primary btn-sm" id="pgSetSave"><span data-icon="check"></span> Guardar serie</button>' +
-          "</div></div>";
-      }
-
-      const target = ww != null
-        ? ex.sets + " × " + ex.reps + " · <strong>" + fmtWeight(ww) + "</strong> · descanso " + window.fmtTime(ex.restSec * 1000)
-        : '<button class="pg-link" id="pgEditRM">Definí tu 1RM de ' + esc(ex.name) + "</button>";
-
-      const lastTxt = last
-        ? '<div class="pg-last">Última vez: ' + last.count + " series · " + last.w + " " + U() + " × " + last.r + " (" + relativeDays(last.ts) + ")" +
-          (allDone && last && workWeight(ex.liftId, ex.loadPct) != null ? "" : "") + "</div>"
-        : "";
-
+    const groupsHtml = s.groups.map((g) => {
+      const ex = g.exercises.map((e) => (e.targetReps ? exCardTempo(e) : exCardChips(e))).join("");
       return (
-        '<div class="pg-ex' + (allDone ? " is-complete" : "") + '">' +
-        '<div class="pg-ex-head">' +
-        '<span class="pg-ex-tag">' + esc(ex.tag) + "</span>" +
-        '<span class="pg-ex-count">' + doneCount + "/" + ex.sets + "</span>" +
-        "</div>" +
-        '<h3 class="pg-ex-name">' + esc(ex.name) + "</h3>" +
-        '<div class="pg-ex-target">' + target + "</div>" +
-        lastTxt +
-        '<div class="pg-set-grid">' + chips + "</div>" +
-        editor +
+        '<div class="pg-group">' +
+        '<div class="pg-group-head">' + esc(g.label) + (g.note ? ' <span class="pg-group-note">' + esc(g.note) + "</span>" : "") + "</div>" +
+        ex +
         "</div>"
       );
     }).join("");
 
-    const finCards = s.finishers.map((f) => {
+    const finHtml = s.finishers.map((f) => {
       const lg = st.log[s.id];
-      const rec = lg && lg.finishers && lg.finishers[f.key];
-      const goalTxt = rec
-        ? (f.label === "PRO-PAIN"
-            ? "Objetivo: <strong>" + (rec.fail * 2) + " reps</strong> en 4:30"
-            : "Objetivo: <strong>" + rec.fail + " reps</strong> en 9:00 (holds de 30 s al descansar)")
-        : "";
-      const clockOpen = finState && finState.key === f.key;
-      let clock = "";
-      if (clockOpen) {
-        clock =
-          '<div class="pg-finclock' + (finState.done ? " is-done" : "") + '" id="pgFinClock">' +
-          '<div class="pg-finclock-time">' + finState.left + "</div>" +
-          '<button class="pg-finclock-count" id="pgFinTap">' + finState.count + "</button>" +
-          '<div class="pg-finclock-actions">' +
-          '<button class="btn btn-ghost btn-sm" id="pgFinMinus"><span data-icon="minus"></span></button>' +
-          '<button class="btn btn-ghost btn-sm" id="pgFinStop">Cerrar reloj</button>' +
-          "</div></div>";
+      const rec = lg && lg.finishers ? lg.finishers[f.key] : null;
+
+      if (f.kind === "propain") {
+        const goalTxt = rec && rec.fail
+          ? (f.label === "PRO-PAIN"
+              ? "Objetivo: <strong>" + (rec.fail * 2) + " reps</strong> en 4:30"
+              : "Objetivo: <strong>" + rec.fail + " reps</strong> en 9:00 (holds de 30 s al descansar)")
+          : "";
+        const clockOpen = finState && finState.key === f.key;
+        let clock = "";
+        if (clockOpen) {
+          clock =
+            '<div class="pg-finclock' + (finState.done ? " is-done" : "") + '" id="pgFinClock">' +
+            '<div class="pg-finclock-time">' + finState.left + "</div>" +
+            '<button class="pg-finclock-count" id="pgFinTap">' + finState.count + "</button>" +
+            '<div class="pg-finclock-actions">' +
+            '<button class="btn btn-ghost btn-sm" id="pgFinMinus"><span data-icon="minus"></span></button>' +
+            '<button class="btn btn-ghost btn-sm" id="pgFinStop">Cerrar reloj</button>' +
+            "</div></div>";
+        }
+        return (
+          '<div class="pg-fin">' +
+          '<div class="pg-ex-head"><span class="pg-ex-tag">' + f.label + '</span><span class="pg-fin-muscle">' + esc(f.muscle) + "</span></div>" +
+          '<div class="pg-fin-move">' + esc(f.movement) + "</div>" +
+          '<p class="pg-fin-protocol">' + esc(f.protocol) + "</p>" +
+          '<div class="pg-fin-row">' +
+          '<label class="field"><span class="field-label">Reps al fallo</span>' +
+          '<input type="number" inputmode="numeric" data-fin="' + f.key + '" value="' + (rec && rec.fail ? rec.fail : "") + '" placeholder="—" /></label>' +
+          '<button class="btn btn-ghost btn-sm" data-finsave="' + f.key + '"><span data-icon="check"></span> Guardar</button>' +
+          '<button class="btn btn-ghost btn-sm" data-finclock="' + f.key + '|' + f.clockSec + '"><span data-icon="clock"></span> Reloj</button>' +
+          "</div>" +
+          (goalTxt ? '<div class="pg-fin-goal">' + goalTxt + "</div>" : "") +
+          clock +
+          "</div>"
+        );
       }
+
+      // kind "note"
+      const isDone = rec && rec.done;
       return (
-        '<div class="pg-fin">' +
-        '<div class="pg-ex-head"><span class="pg-ex-tag">' + f.label + '</span><span class="pg-fin-muscle">' + esc(f.muscle) + "</span></div>" +
-        '<div class="pg-fin-move">' + esc(f.movement) + "</div>" +
+        '<div class="pg-fin' + (isDone ? " is-complete" : "") + '">' +
+        '<div class="pg-ex-head"><span class="pg-ex-tag">Finisher</span>' +
+        (f.muscle ? '<span class="pg-fin-muscle">' + esc(f.muscle) + "</span>" : "") + "</div>" +
+        '<div class="pg-fin-move">' + esc(f.name) + "</div>" +
         '<p class="pg-fin-protocol">' + esc(f.protocol) + "</p>" +
         '<div class="pg-fin-row">' +
-        '<label class="field"><span class="field-label">Reps al fallo</span>' +
-        '<input type="number" inputmode="numeric" data-fin="' + f.key + '" value="' + (rec ? rec.fail : "") + '" placeholder="—" /></label>' +
-        '<button class="btn btn-ghost btn-sm" data-finsave="' + f.key + '"><span data-icon="check"></span> Guardar</button>' +
-        '<button class="btn btn-ghost btn-sm" data-finclock="' + f.key + '|' + f.clockSec + '"><span data-icon="clock"></span> Reloj</button>' +
-        "</div>" +
-        (goalTxt ? '<div class="pg-fin-goal">' + goalTxt + "</div>" : "") +
-        clock +
-        "</div>"
+        '<button class="btn ' + (isDone ? "btn-success" : "btn-ghost") + ' btn-sm" data-fintoggle="' + f.key + '">' +
+        '<span data-icon="check"></span> ' + (isDone ? "Hecho" : "Marcar hecho") + "</button>" +
+        '<button class="btn btn-ghost btn-sm" id="pgOpenTimer"><span data-icon="timer"></span> Cronómetro</button>' +
+        "</div></div>"
       );
     }).join("");
 
@@ -604,24 +822,14 @@
       '<h2 class="pg-title">' + esc(s.title) + "</h2>" +
       '<div class="pg-method-chip">' + esc(s.method) + "</div>" +
       '<div class="pg-note"><span data-icon="clock"></span> ' + esc(s.note) + "</div>" +
-
-      exCards +
-
+      groupsHtml +
       '<h3 class="pg-section-h">Finishers</h3>' +
-      finCards +
-
+      finHtml +
       '<button class="btn btn-primary btn-block" id="pgFinish"><span data-icon="check"></span> ' +
-      (pr.done >= pr.total ? "Finalizar sesión" : "Finalizar sesión (" + pr.done + "/" + pr.total + " series)") + "</button>" +
-
+      (pr.done >= pr.total ? "Finalizar sesión" : "Finalizar sesión (" + pr.done + "/" + pr.total + ")") + "</button>" +
       '<div class="pg-rest-bar" id="pgRestBar" hidden></div>' +
       "</div>"
     );
-  }
-
-  function sessionProgress() {
-    let done = 0, total = 0;
-    sessionRef.exercises.forEach((ex) => { total += ex.sets; done += Math.min(ex.sets, setsFor(ex.liftId).length); });
-    return { done: done, total: total };
   }
 
   /* ======================================================================
@@ -638,13 +846,12 @@
       else delete st.rms[inp.dataset.rm];
     });
     save();
-    toast(hasAllRMs() ? "Listo — pesos de trabajo calculados" : "Guardado (faltan algunos RM)");
+    toast(hasAllRMs() ? "Listo — pesos de la Fase 1 calculados" : "Guardado (faltan algunos RM)");
     go("calendar");
   }
 
   function switchUnit(unit) {
     if (unit === st.unit) return;
-    // Reinterpreta lo que haya escrito en los inputs en la unidad nueva.
     $$("[data-rm]").forEach((inp) => {
       const v = parseFloat(inp.value);
       if (v > 0) {
@@ -657,21 +864,39 @@
     render();
   }
 
-  function saveSet(liftId, index) {
+  function currentEx(key) {
+    let found = null;
+    sessionRef.groups.forEach((g) => g.exercises.forEach((e) => { if (e.key === key) found = e; }));
+    return found;
+  }
+
+  function saveSet(key, index) {
     const w = parseFloat($("#pgSetW").value);
     const r = parseInt($("#pgSetR").value, 10);
     if (!(w >= 0) || !(r > 0)) { toast("Poné peso y reps"); return; }
+    const ex = currentEx(key);
     const lg = sessionLog();
-    if (!lg.sets[liftId]) lg.sets[liftId] = [];
-    lg.sets[liftId][index] = { w: Math.round(w * 100) / 100, r: r, ts: Date.now() };
-    // compacta huecos (no debería haber, se registran en orden)
-    lg.sets[liftId] = lg.sets[liftId].filter(Boolean);
+    if (!lg.sets[key]) lg.sets[key] = [];
+    lg.sets[key][index] = { w: Math.round(w * 100) / 100, r: r, ts: Date.now(), m: ex ? ex.movementSlug : key };
+    lg.sets[key] = lg.sets[key].filter(Boolean);
     editing = null;
     save();
-    const ex = sessionRef.exercises.find((e) => e.liftId === liftId);
     sound("tap");
-    if (ex && lg.sets[liftId].length < ex.sets) startRest(ex.restSec);
+    if (ex && lg.sets[key].length < ex.sets) startRest(ex.restSec);
     else stopRest();
+    render();
+  }
+
+  function saveTempo(key) {
+    const w = parseFloat($('[data-tw="' + key + '"]').value);
+    const r = parseInt($('[data-tr="' + key + '"]').value, 10);
+    if (!(w >= 0) || !(r > 0)) { toast("Poné peso y reps hechas"); return; }
+    const ex = currentEx(key);
+    const lg = sessionLog();
+    lg.sets[key] = [{ w: Math.round(w * 100) / 100, r: r, ts: Date.now(), m: ex ? ex.movementSlug : key }];
+    save();
+    sound("tap");
+    if (ex) startRest(ex.restSec);
     render();
   }
 
@@ -680,9 +905,17 @@
     const v = parseInt(inp && inp.value, 10);
     if (!(v > 0)) { toast("Poné el nº de reps al fallo"); return; }
     const lg = sessionLog();
-    lg.finishers[key] = { fail: v, ts: Date.now() };
+    lg.finishers[key] = Object.assign({}, lg.finishers[key], { fail: v, ts: Date.now() });
     save();
     sound("success");
+    render();
+  }
+
+  function toggleFinisher(key) {
+    const lg = sessionLog();
+    lg.finishers[key] = Object.assign({}, lg.finishers[key]);
+    lg.finishers[key].done = !lg.finishers[key].done;
+    save();
     render();
   }
 
@@ -690,68 +923,74 @@
     const cid = sessionRef.id;
     st.done[cid] = true;
     const lg = st.log[cid];
-    if (lg) lg.date = lg.date || toISO(new Date());
+    if (lg && !lg.date) lg.date = toISO(new Date());
     save();
     stopRest(); stopFinClock();
     toast("Sesión marcada como completa");
     go("calendar");
   }
 
-  function toggleDone(cid) {
-    st.done[cid] = !st.done[cid];
+  function toggleDone(cid) { st.done[cid] = !st.done[cid]; save(); render(); }
+
+  function resetProgress() {
+    st.done = {}; st.log = {};
+    confirmingReset = false;
     save();
+    toast("Progreso reiniciado");
     render();
   }
 
   /* ======================================================================
-     Eventos (delegación sobre #view-program)
+     Eventos
      ====================================================================== */
   function onClick(e) {
     const t = e.target;
 
-    // --- Onboarding ---
     const unit = t.closest("[data-unit]");
     if (unit) { switchUnit(unit.dataset.unit); return; }
     if (t.closest("#pgSaveRM")) { saveOnboarding(); return; }
     if (t.closest("#pgToCal")) { go("calendar"); return; }
 
-    // --- Calendario ---
     if (t.closest("#pgEditRM")) { go("onboarding"); return; }
-    if (t.closest("#pgContinue")) {
-      const nc = nextCell();
-      if (nc) openSession(cellId(nc.week, nc.day));
-      return;
-    }
+    if (t.closest("#pgContinue")) { const nc = nextCell(); if (nc) openSession(cellId(nc.week, nc.day)); return; }
+    if (t.closest("#pgReset")) { confirmingReset = true; render(); return; }
+    if (t.closest("#pgResetNo")) { confirmingReset = false; render(); return; }
+    if (t.closest("#pgResetYes")) { resetProgress(); return; }
     const toggle = t.closest("[data-toggle]");
     if (toggle) { e.stopPropagation(); toggleDone(toggle.dataset.toggle); return; }
     const open = t.closest("[data-open]");
     if (open) { openSession(open.dataset.open); return; }
 
-    // --- Sesión ---
     if (t.closest("#pgBack")) { go("calendar"); return; }
     if (t.closest("#pgFinish")) { finishSession(); return; }
     if (t.closest("#pgRestSkip")) { stopRest(); return; }
+    if (t.closest("#pgOpenTimer")) {
+      const tab = document.querySelector('.tab[data-view="timer"]');
+      if (tab) tab.click();
+      return;
+    }
 
     const setBtn = t.closest("[data-set]");
     if (setBtn) {
       const p = setBtn.dataset.set.split("|");
-      editing = { liftId: p[0], index: +p[1] };
+      editing = { key: p[0], index: +p[1] };
       render();
       const wEl = $("#pgSetW");
       if (wEl) { wEl.focus(); wEl.select(); }
       return;
     }
     if (t.closest("#pgSetCancel")) { editing = null; render(); return; }
-    if (t.closest("#pgSetSave")) { if (editing) saveSet(editing.liftId, editing.index); return; }
+    if (t.closest("#pgSetSave")) { if (editing) saveSet(editing.key, editing.index); return; }
+
+    const tSave = t.closest("[data-tsave]");
+    if (tSave) { saveTempo(tSave.dataset.tsave); return; }
 
     const finSave = t.closest("[data-finsave]");
     if (finSave) { saveFinisher(finSave.dataset.finsave); return; }
+    const finToggle = t.closest("[data-fintoggle]");
+    if (finToggle) { toggleFinisher(finToggle.dataset.fintoggle); return; }
     const finClock = t.closest("[data-finclock]");
-    if (finClock) {
-      const p = finClock.dataset.finclock.split("|");
-      startFinClock(p[0], +p[1]);
-      return;
-    }
+    if (finClock) { const p = finClock.dataset.finclock.split("|"); startFinClock(p[0], +p[1]); return; }
     if (t.closest("#pgFinTap")) { if (finState) { finState.count++; sound("tap"); paintFinClock(); } return; }
     if (t.closest("#pgFinMinus")) { if (finState) { finState.count = Math.max(0, finState.count - 1); paintFinClock(); } return; }
     if (t.closest("#pgFinStop")) { stopFinClock(); render(); return; }
@@ -764,26 +1003,25 @@
     const el = root();
     if (!el) return;
     el.addEventListener("click", onClick);
-
-    // Primera vez sin RMs → onboarding directo
     screen = hasAllRMs() ? "calendar" : "onboarding";
     render();
 
-    // Refrescar al entrar en la pestaña
     const tabbar = $("#tabbar");
     if (tabbar) {
       tabbar.addEventListener("click", (e) => {
         const tab = e.target.closest('.tab[data-view="program"]');
-        if (tab) { if (screen === "session") { /* mantener */ } else { screen = hasAllRMs() ? "calendar" : "onboarding"; } render(); }
+        if (!tab) return;
+        if (screen !== "session") screen = hasAllRMs() ? "calendar" : "onboarding";
+        render();
       });
     }
-
-    // Al salir de la app, cortar timers
     window.addEventListener("beforeunload", () => { stopRest(); stopFinClock(); });
   }
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);
   else init();
 
-  window.AppGymProgram = { reset: function () { st = JSON.parse(JSON.stringify(DEFAULTS)); save(); screen = "onboarding"; render(); } };
+  window.AppGymProgram = {
+    reset: function () { st = JSON.parse(JSON.stringify(DEFAULTS)); save(); screen = "onboarding"; render(); }
+  };
 })();
