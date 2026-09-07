@@ -1446,7 +1446,28 @@ body.light .tab.is-active {
 .pg-fin-goal strong { color: var(--accent); }
 
 .pg-fin .pg-ring { margin: 4px 0; }
-.pg-fin .pg-link { align-self: center; }
+.pg-fin .pg-link { align-self: flex-start; font-size: 0.78rem; }
+.pg-fin-manual { display: flex; flex-direction: column; gap: 8px; }
+.pg-fin-manual .field { margin-bottom: 0; min-width: 84px; }
+
+.pg-fill-link { align-self: flex-start; font-size: 0.8rem; margin-top: -2px; }
+
+.pg-note-field { margin-bottom: 0; margin-top: 4px; }
+.pg-note-field textarea {
+  width: 100%; resize: vertical; min-height: 44px;
+  padding: 10px 12px; border-radius: var(--radius-sm);
+  background: var(--surface-3); border: 1px solid var(--border); color: var(--text);
+  font-family: var(--font-body); font-size: 0.9rem; line-height: 1.4;
+}
+.pg-note-field textarea:focus { outline: none; border-color: var(--accent); }
+.pg-note-field textarea::placeholder { color: var(--text-faint); }
+
+.pg-session-total {
+  display: flex; align-items: center; gap: 8px; font-size: 0.84rem; color: var(--text-muted);
+  background: var(--surface); border: 1px solid var(--border-soft); border-radius: var(--radius-sm);
+  padding: 9px 12px;
+}
+.pg-session-total strong { color: var(--text); font-family: var(--font-display); font-size: 1.05rem; }
 
 .pg-rest-bar {
   position: sticky; bottom: 10px; margin-top: 6px;

@@ -589,6 +589,7 @@
   let sessionRef = null;
   let editing = null;            // { key, index }
   let confirmingReset = false;
+  let finManual = null;          // key del finisher en modo "registro a mano"
 
   function root() { return $("#view-program"); }
 
@@ -596,6 +597,7 @@
     if (screen === "session" && next !== "session") leaveSession();
     editing = null;
     confirmingReset = false;
+    finManual = null;
     screen = next;
     render();
     root().scrollIntoView({ block: "start" });
@@ -942,6 +944,21 @@
             '<button class="btn btn-primary btn-sm" data-finreg="' + f.key + '"><span data-icon="check"></span> Registrar</button>' +
             "</div>" +
             (finState.done ? "" : '<button class="pg-link" data-finstop="' + f.key + '">cancelar reloj</button>');
+        } else if (finManual === f.key) {
+          body =
+            '<div class="pg-fin-manual">' +
+            '<div class="pg-fin-row">' +
+            '<label class="field"><span class="field-label">Reps al fallo</span>' +
+            '<input type="number" inputmode="numeric" data-fmfail="' + f.key + '" value="' + (rec && rec.fail ? rec.fail : "") + '" placeholder="19" /></label>' +
+            '<label class="field"><span class="field-label">Reps logradas</span>' +
+            '<input type="number" inputmode="numeric" data-fmdone="' + f.key + '" value="' + (rec && rec.done != null ? rec.done : "") + '" placeholder="' + (goal != null ? goal : "38") + '" /></label>' +
+            '<label class="field"><span class="field-label">Tiempo (m:ss)</span>' +
+            '<input type="text" inputmode="numeric" data-fmtime="' + f.key + '" value="' + (rec && rec.usedSec ? window.fmtTime(rec.usedSec * 1000) : "") + '" placeholder="' + clockLen + '" /></label>' +
+            "</div>" +
+            '<div class="pg-fin-row">' +
+            '<button class="btn btn-primary btn-sm" data-fmsave="' + f.key + '"><span data-icon="check"></span> Registrar</button>' +
+            '<button class="btn btn-ghost btn-sm" data-fmcancel="' + f.key + '">Cancelar</button>' +
+            "</div></div>";
         } else {
           body =
             '<div class="pg-fin-row">' +
@@ -951,7 +968,8 @@
             (rec && rec.fail ? "Reiniciar" : "Iniciar") + " " + clockLen + "</button>" +
             (rec && rec.fail ? '<button class="btn btn-ghost btn-sm" data-finclear="' + f.key + '"><span data-icon="trash"></span></button>' : "") +
             "</div>" +
-            (rec && rec.fail ? '<div class="pg-fin-goal">Objetivo: <strong>' + goal + " reps</strong> en " + clockLen + " · el reloj arranca al confirmar</div>" : "");
+            (rec && rec.fail ? '<div class="pg-fin-goal">Objetivo: <strong>' + goal + " reps</strong> en " + clockLen + " · el reloj arranca al confirmar</div>" : "") +
+            '<button class="pg-link" data-fmopen="' + f.key + '">ya lo hice — registrar a mano</button>';
         }
 
         return '<div class="pg-fin' + (registered ? " is-complete" : "") + '">' + head + body + "</div>";
@@ -992,6 +1010,10 @@
         '<span class="pg-sclock-hint">' + (sessionRunning() ? "toca para pausar" : "en pausa") + "</span></button>"
       : '<button class="btn btn-primary btn-block" id="pgSessionToggle"><span data-icon="play"></span> Iniciar cronómetro de la sesión</button>';
 
+    const lg0 = st.log[s.id] || {};
+    const noteVal = lg0.note || "";
+    const totalTxt = lg0.totalSec ? '<div class="pg-session-total"><span data-icon="clock"></span> Tiempo total registrado: <strong>' + window.fmtTime(lg0.totalSec * 1000) + "</strong></div>" : "";
+
     return (
       '<div class="pg-wrap pg-session">' +
       '<div class="pg-session-top">' +
@@ -1002,9 +1024,13 @@
       '<div class="pg-method-chip">' + esc(s.method) + "</div>" +
       clockRow +
       '<div class="pg-note"><span data-icon="clock"></span> ' + esc(s.note) + "</div>" +
+      '<button class="pg-link pg-fill-link" id="pgFillAll">Completar las series que falten con lo pautado</button>' +
       groupsHtml +
       '<h3 class="pg-section-h">Finishers</h3>' +
       finHtml +
+      '<label class="field pg-note-field"><span class="field-label">Nota del día (opcional)</span>' +
+      '<textarea id="pgDayNote" rows="2" placeholder="Cómo te sentiste, molestias, ajustes para la próxima…">' + esc(noteVal) + "</textarea></label>" +
+      totalTxt +
       '<button class="btn btn-primary btn-block" id="pgFinish"><span data-icon="check"></span> ' +
       (pr.done >= pr.total ? "Finalizar sesión" : "Finalizar sesión (" + pr.done + "/" + pr.total + ")") + "</button>" +
       nav +
@@ -1157,6 +1183,56 @@
     render();
   }
 
+  // Registro a mano de un finisher ya hecho (reps + tiempo m:ss).
+  function parseMMSS(str) {
+    const m = String(str || "").trim().match(/^(\d+)\s*:\s*(\d{1,2})$/);
+    if (m) return (+m[1]) * 60 + (+m[2]);
+    const n = parseInt(str, 10);
+    return n > 0 ? n : 0;
+  }
+  function registerFinisherManual(key) {
+    const fail = parseInt($('[data-fmfail="' + key + '"]').value, 10);
+    const done = parseInt($('[data-fmdone="' + key + '"]').value, 10);
+    const usedSec = parseMMSS($('[data-fmtime="' + key + '"]').value);
+    if (!(fail > 0) || !(done >= 0)) { toast("Poné reps al fallo y reps logradas"); return; }
+    const lg = sessionLog();
+    lg.finishers[key] = { fail: fail, done: done, usedSec: usedSec, ts: Date.now() };
+    finManual = null;
+    stopFinClock();
+    save();
+    sound("success");
+    render();
+  }
+
+  // Completa las series pendientes con los valores pautados (no pisa lo ya cargado).
+  function fillPrescribed() {
+    const lg = sessionLog();
+    sessionRef.groups.forEach((g) => g.exercises.forEach((ex) => {
+      const last = lastTimeFor(ex.movementSlug, ex.key);
+      const w = ex.prefillKg != null ? ex.prefillKg : (last ? last.w : 0);
+      if (ex.targetReps) {
+        if (!lg.sets[ex.key] || !lg.sets[ex.key].length) {
+          lg.sets[ex.key] = [{ w: w, r: ex.targetReps, ts: Date.now(), m: ex.movementSlug }];
+        }
+      } else {
+        if (!lg.sets[ex.key]) lg.sets[ex.key] = [];
+        const r = ex.reps || (last ? last.r : 8);
+        while (lg.sets[ex.key].length < ex.sets) {
+          lg.sets[ex.key].push({ w: w, r: r, ts: Date.now(), m: ex.movementSlug });
+        }
+      }
+    }));
+    save();
+    toast("Series completadas con los valores pautados");
+    render();
+  }
+
+  function saveDayNote(val) {
+    const lg = sessionLog();
+    lg.note = String(val || "").trim();
+    save();
+  }
+
   function toggleFinisher(key) {
     const lg = sessionLog();
     lg.finishers[key] = Object.assign({}, lg.finishers[key]);
@@ -1221,6 +1297,7 @@
     if (t.closest("#pgFinish")) { finishSession(); return; }
     if (t.closest("#pgRestSkip")) { stopRest(); return; }
     if (t.closest("#pgSessionToggle")) { toggleSessionTimer(); return; }
+    if (t.closest("#pgFillAll")) { fillPrescribed(); return; }
     const navCell = t.closest("[data-navcell]");
     if (navCell) { openSession(navCell.dataset.navcell); return; }
     if (t.closest("#pgOpenTimer")) {
@@ -1248,6 +1325,12 @@
 
     const finSave = t.closest("[data-finsave]");
     if (finSave) { saveFinisher(finSave.dataset.finsave); return; }
+    const fmOpen = t.closest("[data-fmopen]");
+    if (fmOpen) { finManual = fmOpen.dataset.fmopen; render(); return; }
+    const fmCancel = t.closest("[data-fmcancel]");
+    if (fmCancel) { finManual = null; render(); return; }
+    const fmSave = t.closest("[data-fmsave]");
+    if (fmSave) { registerFinisherManual(fmSave.dataset.fmsave); return; }
     const finReg = t.closest("[data-finreg]");
     if (finReg) { registerFinisher(finReg.dataset.finreg); return; }
     const finStop = t.closest("[data-finstop]");
@@ -1272,6 +1355,9 @@
     const el = root();
     if (!el) return;
     el.addEventListener("click", onClick);
+    el.addEventListener("change", (e) => {
+      if (e.target && e.target.id === "pgDayNote") saveDayNote(e.target.value);
+    });
     screen = hasAllRMs() ? "calendar" : "onboarding";
     render();
 
