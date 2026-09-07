@@ -153,6 +153,102 @@
   const F3_PILLARS = "Athletic Pillars — Static Balance · Dynamic Balance · Dynamic Flexibility · Locomotion";
 
   /* ======================================================================
+     Entrada en calor / rehabilitación — bloque previo por día
+     (mon→d1, tue→d2, thu→d3, fri→d4, retos→d5, sun→d1)
+     ====================================================================== */
+  const INFO_RESET_CUELLO =
+    "Protocolo de descarga e inhibición del trapecio superior y los escalenos (sobre todo del lado derecho). " +
+    "De pie o sentado erguido, con ligera retracción de barbilla (papada). " +
+    "1) Deprimí conscientemente ambos hombros hacia el piso, alejándolos de las orejas. " +
+    "2) Llevá la oreja izquierda hacia el hombro izquierdo (inclinación lateral suave) para estirar el lado derecho del cuello. " +
+    "3) Manteniendo esa inclinación, extendé el brazo derecho a 45° hacia abajo y atrás, con pequeñas rotaciones externas de la mano (como si abrieras un pomo de puerta). " +
+    "Hacé 8 a 10 respiraciones diafragmáticas lentas por lado.";
+  const INFO_ABDUCCION_ARCO =
+    "Movilidad de cadera y control lumbopélvico: desasocia el movimiento de la cadera para no compensar con el cuadrado lumbar (QL). " +
+    "En cuadrupedia (manos bajo hombros, rodillas bajo caderas). Extendé una pierna completamente hacia el lateral, a la altura de la cadera, " +
+    "apoyando la planta o el canto interno del pie. Con la columna neutra y el abdomen contraído, despegá el pie unos centímetros y dibujá un arco " +
+    "en el aire llevando la pierna hacia atrás y de vuelta al lateral, como un compás. La pelvis no rota y la lumbar no se arquea; " +
+    "si se enciende el QL o la espalda baja, reducí la altura del despegue.";
+  const INFO_VERNON =
+    "Secuencia dinámica de Vernon Griffith para abrir la cadera en todos sus planos (flexión, abducción, rotación) y activar el glúteo medio. " +
+    "En cuadrupedia: 1) Clam / Fire Hydrant — rodilla a 90°, abducí la cadera elevando la rodilla hacia el lateral sin rotar el torso. " +
+    "2) Círculos de cadera (Hip CARs) — desde la posición lateral, círculos amplios con la rodilla hacia atrás (extensión) y de vuelta al centro. " +
+    "3) Patada trasera en arco — extendé la pierna completamente hacia atrás y hacé toques alternados cruzando por detrás de la pierna de apoyo y abriéndola al lateral. " +
+    "Aplicación asimétrica: más volumen al lado izquierdo (ej. 12 reps izquierda vs. 8 derecha) para igualar el déficit del glúteo medio izquierdo.";
+
+  const WARMUPS = {
+    d1: {
+      title: "Entrada en calor · Pecho / Espalda",
+      items: [
+        { n: "Rotación Torácica en Cuadrupedia / Cat-Cow", d: "1 × 10 por lado" },
+        { n: "Empujes de Serrato Unilateral (o Push-up Plus)", d: "2 × 12 · énfasis en protracción" },
+        { n: "Wall Slides (frente a la pared)", d: "2 × 10 · deprimiendo hombros para inhibir el trapecio superior derecho" },
+        { n: "Plancha Lateral Derecha", d: "2 × 30 s · oblicuo/serrato derecho sin sobrecargar el QL" },
+        { n: "Reseteo de Cuello / Escápula", d: "1 × 8 lentas", info: INFO_RESET_CUELLO },
+        { n: "Retracción Escapular Colgado", d: "2 × 8-10" },
+        { n: "Flexiones en Cuadrupedia Apoyando Dedos", d: "2 × 8" },
+        { n: "Isometría de Extensión de Muñeca con Banda", d: "2 × 15 s · mano débil" },
+        { n: "Abdominales Colgado (Hanging Knee Raises)", d: "2 × 10" }
+      ]
+    },
+    d2: {
+      title: "Entrada en calor · Piernas",
+      items: [
+        { n: "Dorsiflexión Dinámica de Tobillo en Pared", d: "2 × 10-12 por pierna" },
+        { n: "Transiciones Activas de Cadera 90-90 (Variante 1 o 2)", d: "2 × 8 por lado" },
+        { n: "Elevaciones Laterales de Pierna (lado izquierdo)", d: "2 × 15 · activación del glúteo medio débil" },
+        { n: "Puente Glúteo Unilateral (lado derecho)", d: "2 × 10 · foco en glúteo para inhibir el QL derecho" },
+        { n: "Abducción en Cuadrupedia con Pierna Extendida (arco)", d: "1 × 8 por lado", info: INFO_ABDUCCION_ARCO },
+        { n: "Abdominales Colgado (Hanging Knee Raises / pelota entre rodillas)", d: "2 × 10" }
+      ]
+    },
+    d3: {
+      title: "Entrada en calor · Brazos",
+      items: [
+        { n: "Aperturas en \"T\" boca abajo", d: "2 × 12" },
+        { n: "Face-Pull con banda o polea liviana", d: "2 × 12" },
+        { n: "Elevaciones \"Niño de Yoga\"", d: "2 × 10" },
+        { n: "Liberación y Estiramiento Activo de QL Derecho", d: "2 × 25-30 s" },
+        { n: "Flexiones en Cuadrupedia Apoyando Dedos", d: "2 × 10" },
+        { n: "Caminata en Cuadrupedia (nudillos a palmas) + Extensión Movilizada", d: "2 × 8 · muñeca débil" },
+        { n: "Retracción Escapular Colgado", d: "2 × 8" },
+        { n: "Abdominales Colgado (Hanging Knee Raises / L-Sit Tuck)", d: "2 × 8-10" }
+      ]
+    },
+    d4: {
+      title: "Entrada en calor · Hombros / Trapecios",
+      items: [
+        { n: "Elevaciones \"Niño de Yoga\"", d: "2 × 12" },
+        { n: "Rotación Externa / Press Cubano (peso muy liviano o corporal)", d: "2 × 12" },
+        { n: "Wall Slides (espalda a la pared)", d: "2 × 10" },
+        { n: "Push-up Plus o Empuje de Serrato", d: "2 × 12" },
+        { n: "Reseteo de Cuello / Escápulas", d: "1 × 10", info: INFO_RESET_CUELLO },
+        { n: "Retracción Escapular Colgado", d: "2 × 8" },
+        { n: "Flexiones en Cuadrupedia Apoyando Dedos", d: "2 × 8" },
+        { n: "Isometría de Extensión de Muñeca", d: "2 × 15 s · mano débil" },
+        { n: "Abdominales Colgado (Hanging Knee Raises)", d: "2 × 10" }
+      ]
+    },
+    d5: {
+      title: "Entrada en calor · Reto / Full Body",
+      items: [
+        { n: "Circuito de Movilidad Vernon Griffith (asimétrico, lado izquierdo)", d: "2 rondas", info: INFO_VERNON },
+        { n: "Peso Muerto Rumano Unilateral con Mancuerna en Mano Derecha", d: "1 × 10 por lado · foco en pierna izquierda" },
+        { n: "Plancha Lateral Derecha", d: "1 × 40 s" },
+        { n: "Dorsiflexión Dinámica de Tobillo", d: "1 × 10 por lado" },
+        { n: "Retracción Escapular Colgado + Hold", d: "2 × 6 · 3 s de pausa arriba" },
+        { n: "Flexiones en Cuadrupedia Apoyando Dedos", d: "2 × 10" },
+        { n: "Abdominales Colgado (Hanging Knee Raises / Toes to Bar regresionado)", d: "2 × 10" }
+      ]
+    }
+  };
+  function warmupKeyFor(sess) {
+    if (!sess) return null;
+    if (sess.isChallenge) return "d5";
+    return { mon: "d1", tue: "d2", thu: "d3", fri: "d4", sun: "d1" }[sess.day] || null;
+  }
+
+  /* ======================================================================
      Calendario — días / retos / fases
      ====================================================================== */
   const SAT_WOD = {
@@ -590,6 +686,8 @@
   let editing = null;            // { key, index }
   let confirmingReset = false;
   let finManual = null;          // key del finisher en modo "registro a mano"
+  let warmupCollapsed = false;
+  let warmupInfoOpen = null;     // índice del ítem con la explicación abierta
 
   function root() { return $("#view-program"); }
 
@@ -745,20 +843,30 @@
     const p = cid.split("-");
     const week = +p[0], day = p[1];
     const plan = weekPlan(week).find((c) => c.day === day);
+    let s;
     if (plan && plan.kind === "challenge") {
-      if (plan.wodId && window.AppGym && window.AppGym.startWodById) {
-        toast("Al terminar el reto, marcá el día como hecho en el calendario.");
-        window.AppGym.startWodById(plan.wodId);
-      } else { toast("Reto no disponible."); }
-      return;
+      const wod = window.WODS && window.WODS.find((w) => w.id === plan.wodId);
+      s = {
+        id: cid, week: week, day: day, phase: phaseOf(week), isChallenge: true,
+        wodId: plan.wodId,
+        title: wod ? wod.name : (plan.label || "Reto"),
+        titleShort: "Reto",
+        method: plan.label === "Reto final" ? "Reto de cierre" : "Reto",
+        wodDesc: wod ? (wod.description || "") : "",
+        note: "", groups: [], finishers: []
+      };
+    } else {
+      s = buildSession(week, day);
+      if (!s) { toast("Sin sesión para ese día."); return; }
+      if (phaseOf(week) === 1 && !hasAllRMs()) { toast("Primero cargá tus 1RM."); go("onboarding"); return; }
     }
-    const s = buildSession(week, day);
-    if (!s) { toast("Sin sesión para ese día."); return; }
-    if (phaseOf(week) === 1 && !hasAllRMs()) { toast("Primero cargá tus 1RM."); go("onboarding"); return; }
     if (screen === "session") leaveSession(); // pausa el cronómetro del día que dejo
     sessionRef = s;
     editing = null;
     confirmingReset = false;
+    finManual = null;
+    warmupCollapsed = false;
+    warmupInfoOpen = null;
     screen = "session";
     render();
     if (sessionRunning()) ensureSessionClockInterval();
@@ -838,6 +946,42 @@
     );
   }
 
+  // Bloque de entrada en calor / rehabilitación (checklist).
+  function warmupBlock(s) {
+    const wk = warmupKeyFor(s);
+    if (!wk || !WARMUPS[wk]) return "";
+    const w = WARMUPS[wk];
+    const lg = st.log[s.id] || {};
+    const wd = lg.warmup || {};
+    const doneCount = w.items.filter((it, i) => wd[i]).length;
+    const total = w.items.length;
+
+    const rows = warmupCollapsed ? "" : w.items.map((it, i) => {
+      const done = !!wd[i];
+      return (
+        '<div class="pg-wu-item' + (done ? " is-done" : "") + '" data-wu="' + i + '">' +
+        '<span class="pg-wu-check"><span data-icon="' + (done ? "check" : "circle") + '"></span></span>' +
+        '<div class="pg-wu-body">' +
+        '<span class="pg-wu-name">' + esc(it.n) + "</span>" +
+        '<span class="pg-wu-detail">' + esc(it.d) + "</span>" +
+        (it.info && warmupInfoOpen === i ? '<p class="pg-wu-info">' + esc(it.info) + "</p>" : "") +
+        "</div>" +
+        (it.info ? '<button class="pg-wu-i" data-wuinfo="' + i + '" aria-label="Cómo se hace">?</button>' : "") +
+        "</div>"
+      );
+    }).join("");
+
+    return (
+      '<div class="pg-wu' + (doneCount >= total ? " is-complete" : "") + '">' +
+      '<button class="pg-wu-head" id="pgWuToggle">' +
+      '<span data-icon="dumbbell"></span> ' + esc(w.title) +
+      '<span class="pg-wu-count">' + doneCount + "/" + total + "</span>" +
+      '<span class="pg-wu-chevron">' + (warmupCollapsed ? "▼" : "▲") + "</span></button>" +
+      rows +
+      "</div>"
+    );
+  }
+
   // Popup para registrar / corregir una serie (con anillo de descanso).
   function viewSetModal() {
     if (!editing) return "";
@@ -897,10 +1041,56 @@
     );
   }
 
+  function sessionTop(s, dateTxt) {
+    return (
+      '<div class="pg-session-top">' +
+      '<button class="btn btn-ghost btn-sm" id="pgBack"><span data-icon="undo"></span> Calendario</button>' +
+      '<span class="pg-session-meta">Semana ' + s.week + dateTxt + "</span>" +
+      "</div>"
+    );
+  }
+  function sessionNav(s) {
+    const prev = siblingCell(-1), next = siblingCell(1);
+    const navLabel = (c) => (c.kind === "challenge" ? "Reto" : (c.labelShort || c.label)) + " · Sem " + c.week;
+    return (
+      '<div class="pg-session-nav">' +
+      (prev ? '<button class="btn btn-ghost btn-sm" data-navcell="' + cellId(prev.week, prev.day) + '">← ' + esc(navLabel(prev)) + "</button>" : "<span></span>") +
+      (next ? '<button class="btn btn-ghost btn-sm" data-navcell="' + cellId(next.week, next.day) + '">' + esc(navLabel(next)) + " →</button>" : "<span></span>") +
+      "</div>"
+    );
+  }
+  function dayNoteField(s) {
+    const noteVal = (st.log[s.id] || {}).note || "";
+    return (
+      '<label class="field pg-note-field"><span class="field-label">Nota del día (opcional)</span>' +
+      '<textarea id="pgDayNote" rows="2" placeholder="Cómo te sentiste, molestias, ajustes para la próxima…">' + esc(noteVal) + "</textarea></label>"
+    );
+  }
+
   function viewSession() {
     const s = sessionRef;
     const d = cellDate(s.week, s.day);
     const dateTxt = " · " + DAY_FULL[s.day] + (d ? " " + fmtDayMonth(d) : "");
+
+    if (s.isChallenge) {
+      const done = !!st.done[s.id];
+      const firstLine = (s.wodDesc || "").split("\n").filter((l) => l.trim())[0] || "";
+      return (
+        '<div class="pg-wrap pg-session">' +
+        sessionTop(s, dateTxt) +
+        '<h2 class="pg-title">' + esc(s.title) + "</h2>" +
+        '<div class="pg-method-chip">' + esc(s.method) + " · Semana " + s.week + "</div>" +
+        warmupBlock(s) +
+        (firstLine ? '<div class="pg-note"><span data-icon="clock"></span> ' + esc(firstLine) + " (mirá el detalle completo al empezar)</div>" : "") +
+        '<button class="btn btn-primary btn-block" id="pgStartChallenge"><span data-icon="play"></span> Empezar el reto</button>' +
+        dayNoteField(s) +
+        '<button class="btn ' + (done ? "btn-success" : "btn-ghost") + ' btn-block" id="pgFinish"><span data-icon="check"></span> ' +
+        (done ? "Día marcado como hecho" : "Marcar el día como hecho") + "</button>" +
+        sessionNav(s) +
+        '<div class="pg-rest-bar" id="pgRestBar" hidden></div>' +
+        "</div>"
+      );
+    }
 
     const groupsHtml = s.groups.map((g) => {
       const ex = g.exercises.map((e) => (e.targetReps ? exCardTempo(e) : exCardChips(e))).join("");
@@ -992,18 +1182,6 @@
     }).join("");
 
     const pr = sessionProgress();
-    const prev = siblingCell(-1), next = siblingCell(1);
-    const navLabel = (c) => (c.kind === "challenge" ? "Reto" : (c.labelShort || c.label)) + " · Sem " + c.week;
-    const nav =
-      '<div class="pg-session-nav">' +
-      (prev
-        ? '<button class="btn btn-ghost btn-sm" data-navcell="' + cellId(prev.week, prev.day) + '">← ' + esc(navLabel(prev)) + "</button>"
-        : "<span></span>") +
-      (next
-        ? '<button class="btn btn-ghost btn-sm" data-navcell="' + cellId(next.week, next.day) + '">' + esc(navLabel(next)) + " →</button>"
-        : "<span></span>") +
-      "</div>";
-
     const clockRow = sessionStarted()
       ? '<button class="pg-sclock' + (sessionRunning() ? " is-running" : " is-paused") + '" id="pgSessionToggle">' +
         '<span data-icon="clock"></span> <span id="pgSessionClock">' + window.fmtTime(sessionElapsedMs()) + "</span>" +
@@ -1011,29 +1189,25 @@
       : '<button class="btn btn-primary btn-block" id="pgSessionToggle"><span data-icon="play"></span> Iniciar cronómetro de la sesión</button>';
 
     const lg0 = st.log[s.id] || {};
-    const noteVal = lg0.note || "";
     const totalTxt = lg0.totalSec ? '<div class="pg-session-total"><span data-icon="clock"></span> Tiempo total registrado: <strong>' + window.fmtTime(lg0.totalSec * 1000) + "</strong></div>" : "";
 
     return (
       '<div class="pg-wrap pg-session">' +
-      '<div class="pg-session-top">' +
-      '<button class="btn btn-ghost btn-sm" id="pgBack"><span data-icon="undo"></span> Calendario</button>' +
-      '<span class="pg-session-meta">Semana ' + s.week + dateTxt + "</span>" +
-      "</div>" +
+      sessionTop(s, dateTxt) +
       '<h2 class="pg-title">' + esc(s.title) + "</h2>" +
       '<div class="pg-method-chip">' + esc(s.method) + "</div>" +
       clockRow +
+      warmupBlock(s) +
       '<div class="pg-note"><span data-icon="clock"></span> ' + esc(s.note) + "</div>" +
       '<button class="pg-link pg-fill-link" id="pgFillAll">Completar las series que falten con lo pautado</button>' +
       groupsHtml +
       '<h3 class="pg-section-h">Finishers</h3>' +
       finHtml +
-      '<label class="field pg-note-field"><span class="field-label">Nota del día (opcional)</span>' +
-      '<textarea id="pgDayNote" rows="2" placeholder="Cómo te sentiste, molestias, ajustes para la próxima…">' + esc(noteVal) + "</textarea></label>" +
+      dayNoteField(s) +
       totalTxt +
       '<button class="btn btn-primary btn-block" id="pgFinish"><span data-icon="check"></span> ' +
       (pr.done >= pr.total ? "Finalizar sesión" : "Finalizar sesión (" + pr.done + "/" + pr.total + ")") + "</button>" +
-      nav +
+      sessionNav(s) +
       '<div class="pg-rest-bar" id="pgRestBar" hidden></div>' +
       viewSetModal() +
       "</div>"
@@ -1233,6 +1407,20 @@
     save();
   }
 
+  function toggleWarmup(i) {
+    const lg = sessionLog();
+    if (!lg.warmup) lg.warmup = {};
+    lg.warmup[i] = !lg.warmup[i];
+    save();
+    render();
+  }
+  function startChallenge() {
+    if (sessionRef && sessionRef.wodId && window.AppGym && window.AppGym.startWodById) {
+      toast("Al terminar, marcá el día como hecho.");
+      window.AppGym.startWodById(sessionRef.wodId);
+    } else { toast("Reto no disponible."); }
+  }
+
   function toggleFinisher(key) {
     const lg = sessionLog();
     lg.finishers[key] = Object.assign({}, lg.finishers[key]);
@@ -1298,6 +1486,12 @@
     if (t.closest("#pgRestSkip")) { stopRest(); return; }
     if (t.closest("#pgSessionToggle")) { toggleSessionTimer(); return; }
     if (t.closest("#pgFillAll")) { fillPrescribed(); return; }
+    if (t.closest("#pgStartChallenge")) { startChallenge(); return; }
+    if (t.closest("#pgWuToggle")) { warmupCollapsed = !warmupCollapsed; render(); return; }
+    const wuInfo = t.closest("[data-wuinfo]");
+    if (wuInfo) { const i = +wuInfo.dataset.wuinfo; warmupInfoOpen = warmupInfoOpen === i ? null : i; render(); return; }
+    const wu = t.closest("[data-wu]");
+    if (wu) { toggleWarmup(+wu.dataset.wu); return; }
     const navCell = t.closest("[data-navcell]");
     if (navCell) { openSession(navCell.dataset.navcell); return; }
     if (t.closest("#pgOpenTimer")) {
