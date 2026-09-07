@@ -192,7 +192,7 @@
         label: tag,
         exercises: [{
           key: lift.id, movementSlug: lift.id, name: lift.name, muscle: lift.muscle,
-          sets: sets, reps: reps, restSec: 60,
+          sets: sets, reps: reps, restSec: 60, restAfterSec: 240, restAfterLabel: "3-5 min entre los dos 10-by",
           loadHint: ww != null ? fmtWeight(ww) : "definí tu 1RM",
           prefillKg: ww != null ? ww : null
         }]
@@ -225,21 +225,21 @@
         label: "Superserie · " + m, note: "6-9RM cada uno · 2 min descanso",
         exercises: x.superset.map((n, i) => ({
           key: base + "-ss" + i, movementSlug: slug(n), name: n,
-          sets: 2, restSec: 120, loadHint: "6-9RM"
+          sets: 2, restSec: 120, restAfterSec: 120, loadHint: "6-9RM"
         }))
       });
       groups.push({
         label: "Drop → iso · " + m, note: "10RM ×8 reps → hold isométrico al fallo · 90 s",
         exercises: [{
           key: base + "-drop", movementSlug: slug(x.dropIso), name: x.dropIso,
-          sets: 3, reps: 8, restSec: 90, loadHint: "10RM → hold"
+          sets: 3, reps: 8, restSec: 90, restAfterSec: 120, loadHint: "10RM → hold"
         }]
       });
       groups.push({
         label: "Series rectas · " + m, note: "6-9RM · 60 s",
         exercises: [{
           key: base + "-str", movementSlug: slug(x.straight), name: x.straight,
-          sets: 5, restSec: 60, loadHint: "6-9RM"
+          sets: 5, restSec: 60, restAfterSec: 150, loadHint: "6-9RM"
         }]
       });
       if (week <= 6) {
@@ -275,7 +275,7 @@
 
     const exercises = moves.map((n, i) => ({
       key: week + "-" + day + "-" + i, movementSlug: slug(n), name: n,
-      targetReps: target, tempo: tempo, loadHint: loadHint, restSec: 60, restNote: restNote
+      targetReps: target, tempo: tempo, loadHint: loadHint, restSec: 60, restAfterSec: 60, restNote: restNote
     }));
 
     const finText = week === 9 ? F3_FINISHERS_W9[day] : F3_PILLARS;
@@ -434,22 +434,63 @@
   /* ======================================================================
      Timers
      ====================================================================== */
-  let restTimer = null, restLeft = "", restDone = false;
+
+  // --- Anillo circular de cuenta atrás (reusable) ---
+  const RING_R = 52;
+  const RING_C = 2 * Math.PI * RING_R;
+  function ringHtml(id, label) {
+    return (
+      '<div class="pg-ring" id="' + id + '">' +
+      '<svg viewBox="0 0 120 120" class="pg-ring-svg">' +
+      '<circle class="pg-ring-bg" cx="60" cy="60" r="' + RING_R + '"></circle>' +
+      '<circle class="pg-ring-fg" cx="60" cy="60" r="' + RING_R + '" stroke-dasharray="' + RING_C.toFixed(1) + '" stroke-dashoffset="0"></circle>' +
+      "</svg>" +
+      '<div class="pg-ring-center"><span class="pg-ring-time">0:00</span>' +
+      '<span class="pg-ring-label">' + esc(label || "") + "</span></div>" +
+      "</div>"
+    );
+  }
+  function paintRing(id, remainMs, totalMs, done, label) {
+    const box = document.getElementById(id);
+    if (!box) return;
+    const fg = box.querySelector(".pg-ring-fg");
+    const frac = totalMs > 0 ? Math.max(0, Math.min(1, remainMs / totalMs)) : 0;
+    if (fg) fg.style.strokeDashoffset = (RING_C * (1 - frac)).toFixed(1);
+    const tEl = box.querySelector(".pg-ring-time");
+    if (tEl) tEl.textContent = window.fmtTime(Math.max(0, remainMs));
+    if (label != null) { const l = box.querySelector(".pg-ring-label"); if (l) l.textContent = label; }
+    box.classList.toggle("is-done", !!done);
+  }
+
+  // --- Descanso (entre series / entre ejercicios) ---
+  let restTimer = null, restTotalMs = 0, restLabel = "descanso", restDone = false;
   function ensureRestTimer() {
     if (restTimer) return;
     restTimer = new window.TimerEngine({
-      onTick: (s) => { restLeft = s.display; paintRestBar(); },
+      onTick: () => paintRest(),
       onBeep: (k) => { if (k === "tick") sound("tick"); else if (k === "end") sound("end"); },
-      onFinish: () => { restDone = true; sound("success"); paintRestBar(); }
+      onFinish: () => { restDone = true; sound("success"); paintRest(); }
     });
   }
-  function startRest(sec) {
-    ensureRestTimer(); restDone = false;
+  function startRest(sec, label) {
+    ensureRestTimer();
+    restDone = false;
+    restTotalMs = sec * 1000;
+    restLabel = label || "descanso";
     restTimer.configure({ mode: "countdown", durationSec: sec });
-    restTimer.start(); paintRestBar();
+    restTimer.start();
+    paintRest();
   }
-  function stopRest() { if (restTimer) restTimer.reset(); restDone = false; restLeft = ""; paintRestBar(); }
+  function stopRest() { if (restTimer) restTimer.reset(); restDone = false; restTotalMs = 0; paintRest(); }
   function restActive() { return !!restTimer && (restTimer.running || restDone); }
+  function restRemainMs() {
+    if (!restTimer || restDone) return 0;
+    return Math.max(0, restTotalMs - restTimer.elapsedMs);
+  }
+  function paintRest() {
+    paintRestBar();
+    paintRing("pgSetRing", restRemainMs(), restTotalMs, restDone, restDone ? "listo" : restLabel);
+  }
   function paintRestBar() {
     const bar = $("#pgRestBar");
     if (!bar) return;
@@ -457,35 +498,88 @@
     bar.hidden = false;
     bar.classList.toggle("is-done", restDone);
     bar.innerHTML = restDone
-      ? '<span class="pg-rest-label"><span data-icon="check"></span> Descanso listo — a la siguiente serie</span>' +
+      ? '<span class="pg-rest-label"><span data-icon="check"></span> Descanso listo</span>' +
         '<button class="btn btn-ghost btn-sm" id="pgRestSkip">Ocultar</button>'
-      : '<span class="pg-rest-label"><span data-icon="clock"></span> Descanso <strong>' + restLeft + "</strong></span>" +
+      : '<span class="pg-rest-label"><span data-icon="clock"></span> ' + esc(restLabel) + " <strong>" + window.fmtTime(restRemainMs()) + "</strong></span>" +
         '<button class="btn btn-ghost btn-sm" id="pgRestSkip">Saltar</button>';
     hydrate(bar);
   }
 
-  let finTimer = null, finState = null;
+  // --- Reloj del finisher (cuenta atrás pura, sin contador de reps) ---
+  let finTimer = null, finState = null, finTotalMs = 0;
   function ensureFinTimer() {
     if (finTimer) return;
     finTimer = new window.TimerEngine({
-      onTick: (s) => { if (finState) { finState.left = s.display; paintFinClock(); } },
+      onTick: () => paintFinRing(),
       onBeep: (k) => { if (k === "tick") sound("tick"); else if (k === "end") sound("end"); },
-      onFinish: () => { if (finState) { finState.done = true; finState.running = false; sound("success"); paintFinClock(); } }
+      onFinish: () => { if (finState) { finState.done = true; finState.running = false; sound("end"); render(); } }
     });
   }
   function startFinClock(key, sec) {
     ensureFinTimer();
-    finState = { key: key, left: window.fmtTime(sec * 1000), count: 0, running: true, done: false };
+    finTotalMs = sec * 1000;
+    finState = { key: key, running: true, done: false };
     finTimer.configure({ mode: "countdown", durationSec: sec });
-    finTimer.start(); render();
+    finTimer.start();
+    render();
   }
-  function stopFinClock() { if (finTimer) finTimer.reset(); finState = null; }
-  function paintFinClock() {
-    const box = $("#pgFinClock");
-    if (!box || !finState) return;
-    box.querySelector(".pg-finclock-time").textContent = finState.left;
-    box.querySelector(".pg-finclock-count").textContent = finState.count;
-    box.classList.toggle("is-done", finState.done);
+  function stopFinClock() { if (finTimer) finTimer.reset(); finState = null; finTotalMs = 0; }
+  function finRemainMs() {
+    if (!finTimer || !finState || finState.done) return 0;
+    return Math.max(0, finTotalMs - finTimer.elapsedMs);
+  }
+  function finUsedSec() { return Math.round((finTotalMs - finRemainMs()) / 1000); }
+  function paintFinRing() {
+    paintRing("pgFinRing", finRemainMs(), finTotalMs, finState && finState.done,
+      finState && finState.done ? "¡tiempo!" : "en marcha");
+  }
+
+  // --- Cronómetro total de la sesión (arranca antes del 1er movimiento) ---
+  let sessionClockInt = null;
+  function sTimer() { const lg = sessionRef && st.log[sessionRef.id]; return lg && lg.timer; }
+  function sessionElapsedMs() {
+    const t = sTimer();
+    if (!t) return 0;
+    return (t.accum || 0) + (t.startedAt ? Date.now() - t.startedAt : 0);
+  }
+  function sessionRunning() { const t = sTimer(); return !!(t && t.startedAt); }
+  function sessionStarted() { const t = sTimer(); return !!(t && (t.startedAt || t.accum)); }
+  function startSessionTimer() {
+    const lg = sessionLog();
+    if (!lg.timer) lg.timer = { accum: 0, startedAt: null };
+    if (!lg.timer.startedAt) { lg.timer.startedAt = Date.now(); save(); }
+    ensureSessionClockInterval();
+    paintSessionClock();
+  }
+  function pauseSessionTimer() {
+    const lg = sessionRef && st.log[sessionRef.id];
+    if (lg && lg.timer && lg.timer.startedAt) {
+      lg.timer.accum = (lg.timer.accum || 0) + (Date.now() - lg.timer.startedAt);
+      lg.timer.startedAt = null;
+      save();
+    }
+    paintSessionClock();
+  }
+  function toggleSessionTimer() {
+    if (sessionRunning()) pauseSessionTimer(); else startSessionTimer();
+    render();
+  }
+  function ensureSessionClockInterval() {
+    if (!sessionClockInt) sessionClockInt = setInterval(paintSessionClock, 1000);
+  }
+  function clearSessionClockInterval() {
+    if (sessionClockInt) { clearInterval(sessionClockInt); sessionClockInt = null; }
+  }
+  function paintSessionClock() {
+    const el = $("#pgSessionClock");
+    if (el) el.textContent = window.fmtTime(sessionElapsedMs());
+  }
+
+  function leaveSession() {
+    pauseSessionTimer();
+    stopRest();
+    stopFinClock();
+    clearSessionClockInterval();
   }
 
   /* ======================================================================
@@ -499,7 +593,7 @@
   function root() { return $("#view-program"); }
 
   function go(next) {
-    if (screen === "session" && next !== "session") { stopRest(); stopFinClock(); }
+    if (screen === "session" && next !== "session") leaveSession();
     editing = null;
     confirmingReset = false;
     screen = next;
@@ -514,7 +608,13 @@
     else if (screen === "session") el.innerHTML = viewSession();
     else el.innerHTML = viewCalendar();
     hydrate(el);
-    if (screen === "session") paintRestBar();
+    if (screen === "session") {
+      paintRest();
+      paintSessionClock();
+      if (sessionRunning()) ensureSessionClockInterval();
+      if (finState) paintFinRing();
+      if (editing) { const w = $("#pgSetW"); if (w) { w.focus(); w.select(); } }
+    }
   }
 
   /* ---------- Onboarding ---------- */
@@ -653,9 +753,14 @@
     const s = buildSession(week, day);
     if (!s) { toast("Sin sesión para ese día."); return; }
     if (phaseOf(week) === 1 && !hasAllRMs()) { toast("Primero cargá tus 1RM."); go("onboarding"); return; }
+    if (screen === "session") leaveSession(); // pausa el cronómetro del día que dejo
     sessionRef = s;
     editing = null;
-    go("session");
+    confirmingReset = false;
+    screen = "session";
+    render();
+    if (sessionRunning()) ensureSessionClockInterval();
+    root().scrollIntoView({ block: "start" });
   }
 
   function sessionLog() {
@@ -716,28 +821,6 @@
       return '<button class="' + c + '" data-set="' + ex.key + "|" + i + '">' + inner + "</button>";
     }).join("");
 
-    let editor = "";
-    if (editing && editing.key === ex.key) {
-      const cur = logged[editing.index];
-      const prefW = cur ? cur.w
-        : (logged.length ? logged[logged.length - 1].w : (last ? last.w : (ex.prefillKg != null ? ex.prefillKg : "")));
-      const prefR = cur ? cur.r : (ex.reps || "");
-      editor =
-        '<div class="pg-set-editor">' +
-        '<div class="pg-set-editor-title">' + (cur ? "Corregir serie " : "Serie ") + (editing.index + 1) + " de " + ex.sets + " · " + esc(ex.loadHint) + "</div>" +
-        '<div class="pg-set-editor-fields">' +
-        '<label class="field"><span class="field-label">Peso (' + U() + ')</span>' +
-        '<input type="number" inputmode="decimal" step="' + stepFor() + '" id="pgSetW" value="' + prefW + '" /></label>' +
-        '<label class="field"><span class="field-label">Reps</span>' +
-        '<input type="number" inputmode="numeric" id="pgSetR" value="' + prefR + '" /></label>' +
-        "</div>" +
-        '<div class="pg-set-editor-actions">' +
-        '<button class="btn btn-ghost btn-sm" id="pgSetCancel">Cancelar</button>' +
-        (cur ? '<button class="btn btn-danger btn-sm" id="pgSetDelete"><span data-icon="trash"></span> Borrar</button>' : "") +
-        '<button class="btn btn-primary btn-sm" id="pgSetSave"><span data-icon="check"></span> Guardar serie</button>' +
-        "</div></div>";
-    }
-
     const lastTxt = last
       ? '<div class="pg-last">Última vez: ' + last.count + " series · " + last.w + " " + U() + " × " + last.r + " (" + relativeDays(last.ts) + ")</div>"
       : "";
@@ -749,8 +832,39 @@
       '<h3 class="pg-ex-name">' + esc(ex.name) + "</h3>" +
       lastTxt +
       '<div class="pg-set-grid">' + chips + "</div>" +
-      editor +
       "</div>"
+    );
+  }
+
+  // Popup para registrar / corregir una serie (con anillo de descanso).
+  function viewSetModal() {
+    if (!editing) return "";
+    const ex = currentEx(editing.key);
+    if (!ex || ex.targetReps) return "";
+    const logged = setsFor(ex.key);
+    const cur = logged[editing.index];
+    const last = lastTimeFor(ex.movementSlug, ex.key);
+    const prefW = cur ? cur.w
+      : (logged.length ? logged[logged.length - 1].w : (last ? last.w : (ex.prefillKg != null ? ex.prefillKg : "")));
+    const prefR = cur ? cur.r : (ex.reps || "");
+    return (
+      '<div class="pg-modal" id="pgSetModal">' +
+      '<div class="pg-modal-backdrop" data-pgclose></div>' +
+      '<div class="pg-modal-card" role="dialog" aria-modal="true">' +
+      '<button class="pg-modal-x" data-pgclose aria-label="Cerrar"><span data-icon="close"></span></button>' +
+      '<div class="pg-modal-title">' + esc(ex.name) + "</div>" +
+      '<div class="pg-modal-sub">' + (cur ? "Corregir serie " : "Serie ") + (editing.index + 1) + " de " + ex.sets + " · " + esc(ex.loadHint) + "</div>" +
+      (restActive() ? ringHtml("pgSetRing", restDone ? "listo" : restLabel) : "") +
+      '<div class="pg-modal-fields">' +
+      '<label class="field"><span class="field-label">Peso (' + U() + ')</span>' +
+      '<input type="number" inputmode="decimal" step="' + stepFor() + '" id="pgSetW" value="' + prefW + '" /></label>' +
+      '<label class="field"><span class="field-label">Reps</span>' +
+      '<input type="number" inputmode="numeric" id="pgSetR" value="' + prefR + '" /></label>' +
+      "</div>" +
+      '<div class="pg-modal-actions">' +
+      (cur ? '<button class="btn btn-danger btn-sm" id="pgSetDelete"><span data-icon="trash"></span> Borrar</button>' : "") +
+      '<button class="btn btn-primary" id="pgSetSave"><span data-icon="check"></span> Guardar serie</button>' +
+      "</div></div></div>"
     );
   }
 
@@ -801,39 +915,46 @@
       const rec = lg && lg.finishers ? lg.finishers[f.key] : null;
 
       if (f.kind === "propain") {
-        const goalTxt = rec && rec.fail
-          ? (f.label === "PRO-PAIN"
-              ? "Objetivo: <strong>" + (rec.fail * 2) + " reps</strong> en 4:30"
-              : "Objetivo: <strong>" + rec.fail + " reps</strong> en 9:00 (holds de 30 s al descansar)")
-          : "";
-        const clockOpen = finState && finState.key === f.key;
-        let clock = "";
-        if (clockOpen) {
-          clock =
-            '<div class="pg-finclock' + (finState.done ? " is-done" : "") + '" id="pgFinClock">' +
-            '<div class="pg-finclock-time">' + finState.left + "</div>" +
-            '<button class="pg-finclock-count" id="pgFinTap">' + finState.count + "</button>" +
-            '<div class="pg-finclock-actions">' +
-            '<button class="btn btn-ghost btn-sm" id="pgFinMinus"><span data-icon="minus"></span></button>' +
-            '<button class="btn btn-ghost btn-sm" id="pgFinStop">Cerrar reloj</button>' +
-            "</div></div>";
-        }
-        return (
-          '<div class="pg-fin">' +
+        const head =
           '<div class="pg-ex-head"><span class="pg-ex-tag">' + f.label + '</span><span class="pg-fin-muscle">' + esc(f.muscle) + "</span></div>" +
           '<div class="pg-fin-move">' + esc(f.movement) + "</div>" +
-          '<p class="pg-fin-protocol">' + esc(f.protocol) + "</p>" +
-          '<div class="pg-fin-row">' +
-          '<label class="field"><span class="field-label">Reps al fallo</span>' +
-          '<input type="number" inputmode="numeric" data-fin="' + f.key + '" value="' + (rec && rec.fail ? rec.fail : "") + '" placeholder="—" /></label>' +
-          '<button class="btn btn-ghost btn-sm" data-finsave="' + f.key + '"><span data-icon="check"></span> ' + (rec && rec.fail ? "Actualizar" : "Guardar") + "</button>" +
-          (rec && rec.fail ? '<button class="btn btn-ghost btn-sm" data-finclear="' + f.key + '"><span data-icon="trash"></span></button>' : "") +
-          '<button class="btn btn-ghost btn-sm" data-finclock="' + f.key + '|' + f.clockSec + '"><span data-icon="clock"></span> Reloj</button>' +
-          "</div>" +
-          (goalTxt ? '<div class="pg-fin-goal">' + goalTxt + "</div>" : "") +
-          clock +
-          "</div>"
-        );
+          '<p class="pg-fin-protocol">' + esc(f.protocol) + "</p>";
+        const goal = rec && rec.fail ? (f.label === "PRO-PAIN" ? rec.fail * 2 : rec.fail) : null;
+        const registered = rec && rec.done != null;
+        const clockLive = finState && finState.key === f.key;
+        const clockLen = window.fmtTime((f.clockSec || 270) * 1000);
+        let body;
+
+        if (registered) {
+          body =
+            '<div class="pg-fin-goal"><strong>' + rec.done + " reps</strong> en " + window.fmtTime((rec.usedSec || 0) * 1000) +
+            (goal != null ? " · objetivo " + goal : "") + " (fallo: " + (rec.fail || "—") + ")</div>" +
+            '<div class="pg-fin-row">' +
+            '<button class="btn btn-ghost btn-sm" data-finredo="' + f.key + '"><span data-icon="reset"></span> Rehacer</button>' +
+            '<button class="btn btn-ghost btn-sm" data-finclear="' + f.key + '"><span data-icon="trash"></span></button>' +
+            "</div>";
+        } else if (clockLive) {
+          body =
+            ringHtml("pgFinRing", finState.done ? "¡tiempo!" : "en marcha") +
+            '<div class="pg-fin-row">' +
+            '<label class="field"><span class="field-label">' + (finState.done ? "¿Cuántas reps hiciste?" : "Reps logradas (frena el reloj)") + "</span>" +
+            '<input type="number" inputmode="numeric" data-findone="' + f.key + '" value="" placeholder="' + (goal != null ? goal : "") + '" /></label>' +
+            '<button class="btn btn-primary btn-sm" data-finreg="' + f.key + '"><span data-icon="check"></span> Registrar</button>' +
+            "</div>" +
+            (finState.done ? "" : '<button class="pg-link" data-finstop="' + f.key + '">cancelar reloj</button>');
+        } else {
+          body =
+            '<div class="pg-fin-row">' +
+            '<label class="field"><span class="field-label">Reps al fallo</span>' +
+            '<input type="number" inputmode="numeric" data-fin="' + f.key + '" value="' + (rec && rec.fail ? rec.fail : "") + '" placeholder="—" /></label>' +
+            '<button class="btn btn-primary btn-sm" data-finsave="' + f.key + '"><span data-icon="clock"></span> ' +
+            (rec && rec.fail ? "Reiniciar" : "Iniciar") + " " + clockLen + "</button>" +
+            (rec && rec.fail ? '<button class="btn btn-ghost btn-sm" data-finclear="' + f.key + '"><span data-icon="trash"></span></button>' : "") +
+            "</div>" +
+            (rec && rec.fail ? '<div class="pg-fin-goal">Objetivo: <strong>' + goal + " reps</strong> en " + clockLen + " · el reloj arranca al confirmar</div>" : "");
+        }
+
+        return '<div class="pg-fin' + (registered ? " is-complete" : "") + '">' + head + body + "</div>";
       }
 
       // kind "note"
@@ -865,6 +986,12 @@
         : "<span></span>") +
       "</div>";
 
+    const clockRow = sessionStarted()
+      ? '<button class="pg-sclock' + (sessionRunning() ? " is-running" : " is-paused") + '" id="pgSessionToggle">' +
+        '<span data-icon="clock"></span> <span id="pgSessionClock">' + window.fmtTime(sessionElapsedMs()) + "</span>" +
+        '<span class="pg-sclock-hint">' + (sessionRunning() ? "toca para pausar" : "en pausa") + "</span></button>"
+      : '<button class="btn btn-primary btn-block" id="pgSessionToggle"><span data-icon="play"></span> Iniciar cronómetro de la sesión</button>';
+
     return (
       '<div class="pg-wrap pg-session">' +
       '<div class="pg-session-top">' +
@@ -873,6 +1000,7 @@
       "</div>" +
       '<h2 class="pg-title">' + esc(s.title) + "</h2>" +
       '<div class="pg-method-chip">' + esc(s.method) + "</div>" +
+      clockRow +
       '<div class="pg-note"><span data-icon="clock"></span> ' + esc(s.note) + "</div>" +
       groupsHtml +
       '<h3 class="pg-section-h">Finishers</h3>' +
@@ -881,6 +1009,7 @@
       (pr.done >= pr.total ? "Finalizar sesión" : "Finalizar sesión (" + pr.done + "/" + pr.total + ")") + "</button>" +
       nav +
       '<div class="pg-rest-bar" id="pgRestBar" hidden></div>' +
+      viewSetModal() +
       "</div>"
     );
   }
@@ -933,11 +1062,23 @@
     const isNew = index >= lg.sets[key].length;
     lg.sets[key][index] = { w: Math.round(w * 100) / 100, r: r, ts: Date.now(), m: ex ? ex.movementSlug : key };
     lg.sets[key] = lg.sets[key].filter(Boolean);
-    editing = null;
     save();
     sound("tap");
-    // El countdown de descanso solo arranca al registrar una serie nueva, no al corregir.
-    if (isNew && ex && lg.sets[key].length < ex.sets) startRest(ex.restSec);
+    startSessionTimer(); // arranca el cronómetro de la sesión si aún no
+
+    if (isNew && ex) {
+      const doneCount = lg.sets[key].length;
+      if (doneCount < ex.sets) {
+        startRest(ex.restSec, "descanso");
+        editing = { key: key, index: doneCount }; // abre el popup de la siguiente serie
+      } else {
+        // última serie del ejercicio → descanso largo entre ejercicios
+        startRest(ex.restAfterSec || ex.restSec, ex.restAfterLabel || "entre ejercicios");
+        editing = null;
+      }
+    } else {
+      editing = null; // corrección: no toca el reloj
+    }
     render();
   }
 
@@ -969,18 +1110,50 @@
     lg.sets[key] = [{ w: Math.round(w * 100) / 100, r: r, ts: Date.now(), m: ex ? ex.movementSlug : key }];
     save();
     sound("tap");
-    if (ex) startRest(ex.restSec);
+    startSessionTimer();
+    if (ex) startRest(ex.restAfterSec || ex.restSec, ex.restNote || "descanso");
     render();
   }
 
+  function finisherDef(key) {
+    return sessionRef.finishers.find((x) => x.key === key);
+  }
+
+  // Confirmá las reps al fallo → arranca YA el reloj del finisher.
   function saveFinisher(key) {
     const inp = $('[data-fin="' + key + '"]');
     const v = parseInt(inp && inp.value, 10);
     if (!(v > 0)) { toast("Poné el nº de reps al fallo"); return; }
     const lg = sessionLog();
-    lg.finishers[key] = Object.assign({}, lg.finishers[key], { fail: v, ts: Date.now() });
+    lg.finishers[key] = { fail: v, ts: Date.now() }; // reinicia done/usedSec si estabas rehaciendo
     save();
     sound("success");
+    startSessionTimer();
+    const f = finisherDef(key);
+    startFinClock(key, (f && f.clockSec) || 270);
+  }
+
+  // Frená el reloj con las reps totales (o respondé cuando llegó a 0).
+  function registerFinisher(key) {
+    const inp = $('[data-findone="' + key + '"]');
+    const v = parseInt(inp && inp.value, 10);
+    if (!(v >= 0)) { toast("Poné cuántas reps hiciste"); return; }
+    const usedSec = finUsedSec();
+    const lg = sessionLog();
+    lg.finishers[key] = Object.assign({}, lg.finishers[key], { done: v, usedSec: usedSec, ts: Date.now() });
+    stopFinClock();
+    save();
+    sound("success");
+    const f = finisherDef(key);
+    startRest((f && f.restAfterSec) || 150, "después del finisher");
+    render();
+  }
+
+  function redoFinisher(key) {
+    const lg = sessionLog();
+    if (lg.finishers[key]) { delete lg.finishers[key].done; delete lg.finishers[key].usedSec; }
+    stopFinClock();
+    save();
     render();
   }
 
@@ -989,17 +1162,27 @@
     lg.finishers[key] = Object.assign({}, lg.finishers[key]);
     lg.finishers[key].done = !lg.finishers[key].done;
     save();
+    startSessionTimer();
+    if (lg.finishers[key].done) {
+      const f = finisherDef(key);
+      startRest((f && f.restAfterSec) || 150, "después del finisher");
+    }
     render();
   }
 
   function finishSession() {
     const cid = sessionRef.id;
+    pauseSessionTimer();
+    const total = sessionElapsedMs();
     st.done[cid] = true;
     const lg = st.log[cid];
-    if (lg && !lg.date) lg.date = toISO(new Date());
+    if (lg) {
+      if (!lg.date) lg.date = toISO(new Date());
+      lg.totalSec = Math.round(total / 1000);
+    }
     save();
-    stopRest(); stopFinClock();
-    toast("Sesión marcada como completa");
+    stopRest(); stopFinClock(); clearSessionClockInterval();
+    toast(total > 0 ? "Sesión completa · " + window.fmtTime(total) : "Sesión marcada como completa");
     go("calendar");
   }
 
@@ -1037,6 +1220,7 @@
     if (t.closest("#pgBack")) { go("calendar"); return; }
     if (t.closest("#pgFinish")) { finishSession(); return; }
     if (t.closest("#pgRestSkip")) { stopRest(); return; }
+    if (t.closest("#pgSessionToggle")) { toggleSessionTimer(); return; }
     const navCell = t.closest("[data-navcell]");
     if (navCell) { openSession(navCell.dataset.navcell); return; }
     if (t.closest("#pgOpenTimer")) {
@@ -1045,16 +1229,15 @@
       return;
     }
 
+    if (t.closest("[data-pgclose]")) { editing = null; render(); return; }
+
     const setBtn = t.closest("[data-set]");
     if (setBtn) {
       const p = setBtn.dataset.set.split("|");
       editing = { key: p[0], index: +p[1] };
       render();
-      const wEl = $("#pgSetW");
-      if (wEl) { wEl.focus(); wEl.select(); }
       return;
     }
-    if (t.closest("#pgSetCancel")) { editing = null; render(); return; }
     if (t.closest("#pgSetDelete")) { if (editing) deleteSet(editing.key, editing.index); return; }
     if (t.closest("#pgSetSave")) { if (editing) saveSet(editing.key, editing.index); return; }
 
@@ -1065,19 +1248,21 @@
 
     const finSave = t.closest("[data-finsave]");
     if (finSave) { saveFinisher(finSave.dataset.finsave); return; }
+    const finReg = t.closest("[data-finreg]");
+    if (finReg) { registerFinisher(finReg.dataset.finreg); return; }
+    const finStop = t.closest("[data-finstop]");
+    if (finStop) { stopFinClock(); render(); return; }
+    const finRedo = t.closest("[data-finredo]");
+    if (finRedo) { redoFinisher(finRedo.dataset.finredo); return; }
     const finClear = t.closest("[data-finclear]");
     if (finClear) {
       const lg = sessionLog();
-      if (lg.finishers[finClear.dataset.finclear]) delete lg.finishers[finClear.dataset.finclear].fail;
+      delete lg.finishers[finClear.dataset.finclear];
+      stopFinClock();
       save(); render(); return;
     }
     const finToggle = t.closest("[data-fintoggle]");
     if (finToggle) { toggleFinisher(finToggle.dataset.fintoggle); return; }
-    const finClock = t.closest("[data-finclock]");
-    if (finClock) { const p = finClock.dataset.finclock.split("|"); startFinClock(p[0], +p[1]); return; }
-    if (t.closest("#pgFinTap")) { if (finState) { finState.count++; sound("tap"); paintFinClock(); } return; }
-    if (t.closest("#pgFinMinus")) { if (finState) { finState.count = Math.max(0, finState.count - 1); paintFinClock(); } return; }
-    if (t.closest("#pgFinStop")) { stopFinClock(); render(); return; }
   }
 
   /* ======================================================================
@@ -1099,7 +1284,11 @@
         render();
       });
     }
-    window.addEventListener("beforeunload", () => { stopRest(); stopFinClock(); });
+    window.addEventListener("beforeunload", () => { pauseSessionTimer(); stopRest(); stopFinClock(); clearSessionClockInterval(); });
+    document.addEventListener("visibilitychange", () => {
+      // Al volver a la pestaña, re-sincroniza el cronómetro visible.
+      if (!document.hidden && screen === "session") { paintSessionClock(); paintRest(); }
+    });
   }
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);
