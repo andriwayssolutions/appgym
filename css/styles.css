@@ -1432,6 +1432,14 @@ body.light .tab.is-active {
 .pg-sclock.is-running { border-color: var(--success); color: var(--success); }
 .pg-sclock.is-paused { color: var(--text-muted); }
 .pg-sclock-hint { margin-left: auto; font-family: var(--font-body); font-size: 0.68rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-faint); }
+.pg-sclock-controls { display: flex; align-items: center; gap: 6px; margin-top: -4px; flex-wrap: wrap; }
+.pg-sclock-warn { font-size: 0.8rem; font-weight: 600; color: var(--danger); margin-right: 2px; }
+.pg-sclock-edit {
+  background: var(--surface); border: 1px solid var(--accent); border-radius: var(--radius-sm);
+  padding: 12px; display: flex; flex-direction: column; gap: 10px;
+}
+.pg-sclock-edit .field { margin-bottom: 0; }
+.pg-sclock-edit input { font-size: 1.1rem; font-weight: 700; text-align: center; }
 
 .pg-fin {
   background: var(--surface); border: 1px solid var(--border-soft); border-radius: var(--radius);

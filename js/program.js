@@ -288,14 +288,16 @@
         label: tag,
         exercises: [{
           key: lift.id, movementSlug: lift.id, name: lift.name, muscle: lift.muscle,
-          sets: sets, reps: reps, restSec: 60, restAfterSec: 240, restAfterLabel: "3-5 min entre los dos 10-by",
+          sets: sets, reps: reps, restSec: 60,
+          restAfterSec: alternate ? 90 : 240,
+          restAfterLabel: alternate ? "fin del bloque alternado" : "3-5 min entre los dos 10-by",
           loadHint: ww != null ? fmtWeight(ww) : "definí tu 1RM",
           prefillKg: ww != null ? ww : null
         }]
       };
     };
     return {
-      id: week + "-" + day, week: week, day: day, phase: 1,
+      id: week + "-" + day, week: week, day: day, phase: 1, alternate: alternate,
       title: big.muscle + " / " + small.muscle,
       titleShort: MUSCLE_SHORT[big.muscle] + " / " + MUSCLE_SHORT[small.muscle],
       method: alternate ? "XV-10 · alternado" : "XV-10",
@@ -454,6 +456,22 @@
   function fmtWeight(v) {
     const n = Math.round(v * 10) / 10;
     return (Number.isInteger(n) ? n : n.toFixed(1)) + " " + U();
+  }
+  // Duración larga: H:MM:SS si pasa la hora, si no M:SS.
+  function fmtDur(ms) {
+    const s = Math.max(0, Math.round(ms / 1000));
+    const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
+    return h > 0
+      ? h + ":" + String(m).padStart(2, "0") + ":" + String(sec).padStart(2, "0")
+      : m + ":" + String(sec).padStart(2, "0");
+  }
+  function parseDur(str) {
+    const parts = String(str || "").trim().split(":").map((x) => parseInt(x, 10));
+    if (!parts.length || parts.some((n) => isNaN(n) || n < 0)) return null;
+    if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
+    if (parts.length === 2) return parts[0] * 60 + parts[1];
+    if (parts.length === 1) return parts[0] * 60; // sólo minutos
+    return null;
   }
   function workWeight(liftId, pct) {
     const rmKg = st.rms[liftId];
@@ -660,6 +678,28 @@
     if (sessionRunning()) pauseSessionTimer(); else startSessionTimer();
     render();
   }
+  function resetSessionTime() {
+    const lg = sessionLog();
+    lg.timer = { accum: 0, startedAt: null };
+    delete lg.totalSec;
+    sessionTimeConfirmReset = false;
+    clearSessionClockInterval();
+    save();
+    toast("Cronómetro reiniciado a 0");
+    render();
+  }
+  function setSessionTimeFromInput() {
+    const sec = parseDur($("#pgSessionTimeInput").value);
+    if (sec == null) { toast("Formato: 1:00:00  ·  60:00  ·  o minutos"); return; }
+    const lg = sessionLog();
+    lg.timer = { accum: sec * 1000, startedAt: null };
+    if (lg.totalSec != null) lg.totalSec = sec;
+    sessionTimeEdit = false;
+    clearSessionClockInterval();
+    save();
+    toast("Tiempo de sesión: " + fmtDur(sec * 1000));
+    render();
+  }
   function ensureSessionClockInterval() {
     if (!sessionClockInt) sessionClockInt = setInterval(paintSessionClock, 1000);
   }
@@ -668,7 +708,7 @@
   }
   function paintSessionClock() {
     const el = $("#pgSessionClock");
-    if (el) el.textContent = window.fmtTime(sessionElapsedMs());
+    if (el) el.textContent = fmtDur(sessionElapsedMs());
   }
 
   function leaveSession() {
@@ -688,6 +728,8 @@
   let finManual = null;          // key del finisher en modo "registro a mano"
   let warmupCollapsed = false;
   let warmupInfoOpen = null;     // índice del ítem con la explicación abierta
+  let sessionTimeEdit = false;
+  let sessionTimeConfirmReset = false;
 
   function root() { return $("#view-program"); }
 
@@ -696,6 +738,8 @@
     editing = null;
     confirmingReset = false;
     finManual = null;
+    sessionTimeEdit = false;
+    sessionTimeConfirmReset = false;
     screen = next;
     render();
     root().scrollIntoView({ block: "start" });
@@ -867,6 +911,8 @@
     finManual = null;
     warmupCollapsed = false;
     warmupInfoOpen = null;
+    sessionTimeEdit = false;
+    sessionTimeConfirmReset = false;
     screen = "session";
     render();
     if (sessionRunning()) ensureSessionClockInterval();
@@ -1067,6 +1113,39 @@
     );
   }
 
+  function buildClockRow(s) {
+    if (sessionTimeEdit) {
+      const cur = fmtDur(sessionElapsedMs());
+      return (
+        '<div class="pg-sclock-edit">' +
+        '<label class="field"><span class="field-label">Tiempo total de la sesión (h:mm:ss)</span>' +
+        '<input type="text" inputmode="numeric" id="pgSessionTimeInput" value="' + (cur === "0:00" ? "" : cur) + '" placeholder="1:00:00" /></label>' +
+        '<div class="pg-fin-row">' +
+        '<button class="btn btn-primary btn-sm" id="pgSessionTimeSave"><span data-icon="check"></span> Guardar</button>' +
+        '<button class="btn btn-ghost btn-sm" id="pgSessionTimeCancel">Cancelar</button>' +
+        "</div></div>"
+      );
+    }
+    if (!sessionStarted()) {
+      return (
+        '<button class="btn btn-primary btn-block" id="pgSessionToggle"><span data-icon="play"></span> Iniciar cronómetro de la sesión</button>' +
+        '<button class="pg-link pg-fill-link" id="pgSessionEdit">o cargar el tiempo total a mano</button>'
+      );
+    }
+    const chip =
+      '<button class="pg-sclock' + (sessionRunning() ? " is-running" : " is-paused") + '" id="pgSessionToggle">' +
+      '<span data-icon="clock"></span> <span id="pgSessionClock">' + fmtDur(sessionElapsedMs()) + "</span>" +
+      '<span class="pg-sclock-hint">' + (sessionRunning() ? "toca para pausar" : "en pausa") + "</span></button>";
+    const controls = sessionTimeConfirmReset
+      ? '<div class="pg-sclock-controls"><span class="pg-sclock-warn">¿Reiniciar a 0?</span>' +
+        '<button class="btn btn-danger btn-sm" id="pgSessionResetYes">Sí</button>' +
+        '<button class="btn btn-ghost btn-sm" id="pgSessionResetNo">No</button></div>'
+      : '<div class="pg-sclock-controls">' +
+        '<button class="btn btn-ghost btn-sm" id="pgSessionEdit"><span data-icon="edit"></span> Ajustar</button>' +
+        '<button class="btn btn-ghost btn-sm" id="pgSessionReset"><span data-icon="reset"></span> Reiniciar</button></div>';
+    return chip + controls;
+  }
+
   function viewSession() {
     const s = sessionRef;
     const d = cellDate(s.week, s.day);
@@ -1182,14 +1261,10 @@
     }).join("");
 
     const pr = sessionProgress();
-    const clockRow = sessionStarted()
-      ? '<button class="pg-sclock' + (sessionRunning() ? " is-running" : " is-paused") + '" id="pgSessionToggle">' +
-        '<span data-icon="clock"></span> <span id="pgSessionClock">' + window.fmtTime(sessionElapsedMs()) + "</span>" +
-        '<span class="pg-sclock-hint">' + (sessionRunning() ? "toca para pausar" : "en pausa") + "</span></button>"
-      : '<button class="btn btn-primary btn-block" id="pgSessionToggle"><span data-icon="play"></span> Iniciar cronómetro de la sesión</button>';
+    const clockRow = buildClockRow(s);
 
     const lg0 = st.log[s.id] || {};
-    const totalTxt = lg0.totalSec ? '<div class="pg-session-total"><span data-icon="clock"></span> Tiempo total registrado: <strong>' + window.fmtTime(lg0.totalSec * 1000) + "</strong></div>" : "";
+    const totalTxt = lg0.totalSec ? '<div class="pg-session-total"><span data-icon="clock"></span> Tiempo total registrado: <strong>' + fmtDur(lg0.totalSec * 1000) + "</strong></div>" : "";
 
     return (
       '<div class="pg-wrap pg-session">' +
@@ -1252,6 +1327,34 @@
     return found;
   }
 
+  // Lista de ejercicios que se turnan al guardar una serie:
+  //  - semanas alternadas (Fase 1 sem 3-4): los dos ejercicios del día;
+  //  - superserie (Fase 2): los ejercicios de ese grupo;
+  //  - resto: sólo el ejercicio actual (series seguidas).
+  function interleaveGroup(ex) {
+    if (sessionRef.alternate) {
+      const all = [];
+      sessionRef.groups.forEach((g) => g.exercises.forEach((e) => { if (!e.targetReps) all.push(e); }));
+      if (all.length >= 2) return all;
+    }
+    const grp = sessionRef.groups.find((g) => g.exercises.some((e) => e.key === ex.key));
+    if (grp && grp.exercises.filter((e) => !e.targetReps).length > 1) {
+      return grp.exercises.filter((e) => !e.targetReps);
+    }
+    return [ex];
+  }
+  // Primer hueco en el orden intercalado A0, B0, A1, B1, …
+  function nextSlotIn(exList) {
+    const n = Math.max.apply(null, exList.map((e) => e.sets));
+    for (let i = 0; i < n; i++) {
+      for (let j = 0; j < exList.length; j++) {
+        const e = exList[j];
+        if (i < e.sets && setsFor(e.key).length <= i) return { key: e.key, index: i };
+      }
+    }
+    return null;
+  }
+
   function saveSet(key, index) {
     const w = parseFloat($("#pgSetW").value);
     const r = parseInt($("#pgSetR").value, 10);
@@ -1267,12 +1370,13 @@
     startSessionTimer(); // arranca el cronómetro de la sesión si aún no
 
     if (isNew && ex) {
-      const doneCount = lg.sets[key].length;
-      if (doneCount < ex.sets) {
+      const exList = interleaveGroup(ex);
+      const nextSlot = nextSlotIn(exList);
+      if (nextSlot) {
         startRest(ex.restSec, "descanso");
-        editing = { key: key, index: doneCount }; // abre el popup de la siguiente serie
+        editing = nextSlot; // siguiente serie (el otro ejercicio si es alternado/superserie)
       } else {
-        // última serie del ejercicio → descanso largo entre ejercicios
+        // se completó el bloque → descanso largo entre ejercicios
         startRest(ex.restAfterSec || ex.restSec, ex.restAfterLabel || "entre ejercicios");
         editing = null;
       }
@@ -1485,6 +1589,12 @@
     if (t.closest("#pgFinish")) { finishSession(); return; }
     if (t.closest("#pgRestSkip")) { stopRest(); return; }
     if (t.closest("#pgSessionToggle")) { toggleSessionTimer(); return; }
+    if (t.closest("#pgSessionEdit")) { sessionTimeEdit = true; sessionTimeConfirmReset = false; render(); return; }
+    if (t.closest("#pgSessionTimeCancel")) { sessionTimeEdit = false; render(); return; }
+    if (t.closest("#pgSessionTimeSave")) { setSessionTimeFromInput(); return; }
+    if (t.closest("#pgSessionReset")) { sessionTimeConfirmReset = true; render(); return; }
+    if (t.closest("#pgSessionResetNo")) { sessionTimeConfirmReset = false; render(); return; }
+    if (t.closest("#pgSessionResetYes")) { resetSessionTime(); return; }
     if (t.closest("#pgFillAll")) { fillPrescribed(); return; }
     if (t.closest("#pgStartChallenge")) { startChallenge(); return; }
     if (t.closest("#pgWuToggle")) { warmupCollapsed = !warmupCollapsed; render(); return; }
