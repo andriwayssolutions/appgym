@@ -654,7 +654,10 @@
   // doneAt: marca de tiempo del último cambio de cada día (marcar/desmarcar).
   // La usa la sincronización para resolver conflictos por día (last-write-wins),
   // así desmarcar un día en un dispositivo no se "revierte" solo al sincronizar.
-  const DEFAULTS = { unit: "kg", startDate: null, rms: {}, done: {}, doneAt: {}, log: {} };
+  // wipedAt: marca de tiempo del último "Borrar progreso". La sync usa el lado
+  // con el wipedAt más nuevo como autoridad de done/doneAt/log, así el reset
+  // se propaga al otro dispositivo (si no, la nube lo restauraba enseguida).
+  const DEFAULTS = { unit: "kg", startDate: null, rms: {}, done: {}, doneAt: {}, log: {}, wipedAt: 0 };
   let st = load();
 
   function load() {
@@ -678,8 +681,15 @@
     st.doneAt[cid] = Date.now();
   }
   function save() {
+    var applying = window.AppGymSync && window.AppGymSync.applying;
+    // Sello de tiempo del día en curso: la sync resuelve conflictos por día con
+    // last-write-wins usando este valor (así borrar/destildar/pausar sí se
+    // refleja en el otro dispositivo, no solo agregar).
+    if (!applying && screen === "session" && sessionRef && st.log[sessionRef.id]) {
+      st.log[sessionRef.id]._mAt = Date.now();
+    }
     try { localStorage.setItem(STORE_KEY, JSON.stringify(st)); } catch (e) { /* noop */ }
-    if (window.AppGymSync && !window.AppGymSync.applying) window.AppGymSync.onLocalChange();
+    if (!applying && window.AppGymSync) window.AppGymSync.onLocalChange();
   }
 
   /* ======================================================================
@@ -1833,8 +1843,10 @@
 
   function resetProgress() {
     st.done = {}; st.doneAt = {}; st.log = {};
+    st.wipedAt = Date.now();
     confirmingReset = false;
     save();
+    if (window.AppGymSync && window.AppGymSync.forcePush) window.AppGymSync.forcePush();
     toast("Progreso reiniciado");
     render();
   }
@@ -1965,6 +1977,10 @@
     reset: function () { st = JSON.parse(JSON.stringify(DEFAULTS)); save(); screen = "onboarding"; render(); },
     // ---- puentes para la sincronización entre dispositivos (js/sync.js) ----
     exportState: function () { return JSON.parse(JSON.stringify(st)); },
+    // Clave del día que el usuario tiene abierto ahora mismo (o null).
+    activeSessionId: function () {
+      return (screen === "session" && sessionRef && sessionRef.id) ? sessionRef.id : null;
+    },
     importState: function (incoming) {
       if (!incoming || typeof incoming !== "object") return;
       var base = JSON.parse(JSON.stringify(DEFAULTS));
@@ -1974,19 +1990,30 @@
         doneAt: Object.assign({}, incoming.doneAt),
         log: Object.assign({}, incoming.log)
       });
-      // Si hay una sesión abierta, la nube NO pisa el día en curso: mantenemos
-      // el log local de esa clave (cronómetro, series y finishers recién
-      // cargados). La sync vuelve a gestionar ese día al salir de la sesión.
-      if (screen === "session" && sessionRef && sessionRef.id && st.log[sessionRef.id]) {
-        next.log[sessionRef.id] = st.log[sessionRef.id];
+      // Si hay una sesión abierta: el resto del día SÍ se actualiza desde la
+      // nube (para ver cambios del otro dispositivo), pero el cronómetro local
+      // no se pisa (no queremos que el reloj salte). Si el remoto aún no tiene
+      // ese día, conservamos el local entero.
+      if (screen === "session" && sessionRef && sessionRef.id) {
+        var cid = sessionRef.id, localLg = st.log[cid];
+        if (localLg && !next.log[cid]) {
+          next.log[cid] = localLg;
+        } else if (localLg && next.log[cid] && localLg.timer) {
+          next.log[cid].timer = localLg.timer;
+        }
       }
       st = next;
       save();
-      // No re-renderizamos en medio de una sesión activa: el estado queda
-      // actualizado y la vista lo toma al salir. En cualquier otra pantalla,
-      // refrescamos.
+      // Refrescamos la vista. En sesión, sólo si el usuario no está tipeando
+      // en un campo (para no cortarle la carga de una serie o la nota).
       try {
-        if (screen !== "session") {
+        var ae = document.activeElement;
+        var root_ = root();
+        var typing = ae && (ae.tagName === "INPUT" || ae.tagName === "TEXTAREA") &&
+          root_ && root_.contains(ae);
+        if (screen === "session") {
+          if (!typing) render();
+        } else {
           screen = hasAllRMs() ? "calendar" : "onboarding";
           render();
         }

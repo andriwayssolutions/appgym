@@ -25,6 +25,7 @@
     applying: false, // true mientras aplicamos estado remoto → los save() no re-disparan sync
     onLocalChange: onLocalChange,
     syncNow: function () { scheduleSync(0, "manual"); },
+    forcePush: forcePush, // pisa la nube con el estado local (para acciones destructivas)
     signIn: signIn,
     signOut: signOut,
     getStatus: function () { return status; }
@@ -79,7 +80,7 @@
 
     sb.auth.getSession().then(function (res) {
       var session = res && res.data && res.data.session;
-      if (session && session.user) { user = session.user; setStatus("pending"); scheduleSync(0, "boot"); }
+      if (session && session.user) { user = session.user; setStatus("pending"); scheduleSync(0, "boot"); subscribeRealtime(); }
       else setStatus("signedout");
       renderPanel();
     });
@@ -87,11 +88,12 @@
     sb.auth.onAuthStateChange(function (event, session) {
       if (event === "SIGNED_OUT") {
         user = null;
+        unsubscribeRealtime();
         setStatus("signedout");
       } else if (session && session.user) {
         var had = user && user.id;
         user = session.user;
-        if (!had) { setStatus("pending"); scheduleSync(0, "signin"); }
+        if (!had) { setStatus("pending"); scheduleSync(0, "signin"); subscribeRealtime(); }
       }
       renderPanel();
     });
@@ -100,8 +102,37 @@
       if (!document.hidden && user) scheduleSync(400, "visible");
     });
     window.addEventListener("focus", function () { if (user) scheduleSync(600, "focus"); });
-    window.addEventListener("online", function () { if (user) scheduleSync(200, "online"); });
+    window.addEventListener("online", function () { if (user) { scheduleSync(200, "online"); subscribeRealtime(); } });
     window.addEventListener("offline", function () { if (user) setStatus("offline"); });
+
+    // Respaldo: si Realtime se cae en silencio, un sondeo suave mientras la
+    // pestaña está visible mantiene la app al día en ~20 s.
+    setInterval(function () {
+      if (user && !document.hidden && navigator.onLine) scheduleSync(0, "poll");
+    }, 20000);
+  }
+
+  /* ------------------------------------------------------ realtime (push) */
+  var rtChannel = null;
+  function subscribeRealtime() {
+    if (!sb || !user || rtChannel) return;
+    try {
+      rtChannel = sb
+        .channel("user_state:" + user.id)
+        .on(
+          "postgres_changes",
+          { event: "UPDATE", schema: "public", table: "user_state", filter: "user_id=eq." + user.id },
+          function () { scheduleSync(500, "realtime"); }
+        )
+        .subscribe();
+    } catch (e) {
+      rtChannel = null; // Realtime es opcional; el sondeo cubre el caso.
+    }
+  }
+  function unsubscribeRealtime() {
+    if (!rtChannel) return;
+    try { sb.removeChannel(rtChannel); } catch (e) { /* noop */ }
+    rtChannel = null;
   }
 
   /* ------------------------------------------------------------------ auth */
@@ -157,7 +188,20 @@
         var remoteNewer = remoteMs > (meta.localMutatedAt || 0);
         var mApp = mergeApp(local.app, data.app || {}, remoteNewer);
         var mProg = mergeProgram(local.program, data.program || {}, remoteNewer);
-        applyLocal(mApp, mProg);
+
+        // Si hay una sesión abierta, el cronómetro de ese día lo manda el
+        // dispositivo local (no lo pisamos con el de la nube, evita saltos).
+        var activeId = window.AppGymProgram && window.AppGymProgram.activeSessionId
+          ? window.AppGymProgram.activeSessionId() : null;
+        var localLog = (local.program && local.program.log) || {};
+        if (activeId && mProg.log[activeId] && localLog[activeId] && localLog[activeId].timer) {
+          mProg.log[activeId] = Object.assign({}, mProg.log[activeId], { timer: localLog[activeId].timer });
+        }
+
+        // Sólo tocamos el estado local (y re-renderizamos) si algo cambió.
+        if (!eq(mApp, local.app) || !eq(mProg, local.program)) {
+          applyLocal(mApp, mProg);
+        }
         if (!eq(mApp, data.app) || !eq(mProg, data.program)) {
           return doPush(mApp, mProg);
         }
@@ -178,6 +222,26 @@
     return sb.from("user_state")
       .upsert({ user_id: user.id, app: app, program: program }, { onConflict: "user_id" })
       .then(function (res) { if (res.error) throw res.error; });
+  }
+
+  // Sube el estado local pisando la nube, sin merge. Para acciones destructivas
+  // explícitas (Borrar progreso) donde el local debe ganar sí o sí.
+  function forcePush() {
+    if (!user || !sb || !navigator.onLine) return;
+    clearTimeout(pushTimer);
+    var local = readLocal();
+    setStatus("syncing");
+    doPush(local.app, local.program)
+      .then(function () {
+        meta.localMutatedAt = Date.now();
+        meta.lastSyncAt = Date.now();
+        saveMeta();
+        setStatus("synced");
+      })
+      .catch(function (err) {
+        console.warn("[sync] forcePush", (err && err.message) || err);
+        setStatus("error");
+      });
   }
 
   function finishSync(st) {
@@ -209,7 +273,21 @@
   }
 
   /* -------------------------------------------------------- merge helpers */
-  function eq(a, b) { try { return JSON.stringify(a) === JSON.stringify(b); } catch (e) { return false; } }
+  // Igualdad estructural insensible al orden de claves (evita pushes/renders
+  // inútiles cuando el merge reordena campos).
+  function canon(v) {
+    if (Array.isArray(v)) return v.map(canon);
+    if (v && typeof v === "object") {
+      var o = {};
+      Object.keys(v).sort().forEach(function (k) { o[k] = canon(v[k]); });
+      return o;
+    }
+    return v;
+  }
+  function eq(a, b) {
+    try { return JSON.stringify(canon(a)) === JSON.stringify(canon(b)); }
+    catch (e) { return false; }
+  }
   function has(v) { return v !== undefined && v !== null; }
   function pick(primary, secondary) { return has(primary) ? primary : secondary; }
 
@@ -247,6 +325,24 @@
     a = a || {}; b = b || {};
     var s = remoteNewer ? b : a;
     var o = remoteNewer ? a : b;
+    var wipeA = a.wipedAt || 0, wipeB = b.wipedAt || 0;
+
+    // "Borrar progreso": el lado que reseteó más recientemente es la autoridad
+    // de done/doneAt/log (su estado ya refleja el borrado + lo hecho después).
+    // Los RM no los borra el reset, así que se siguen mergeando.
+    if (wipeA !== wipeB) {
+      var w = wipeA > wipeB ? a : b;
+      return {
+        unit: s.unit || o.unit || "kg",
+        startDate: s.startDate || o.startDate || null,
+        rms: Object.assign({}, o.rms, s.rms),
+        done: Object.assign({}, w.done),
+        doneAt: Object.assign({}, w.doneAt),
+        log: Object.assign({}, w.log),
+        wipedAt: Math.max(wipeA, wipeB)
+      };
+    }
+
     var d = mergeDone(a.done, a.doneAt, b.done, b.doneAt);
     return {
       unit: s.unit || o.unit || "kg",
@@ -254,7 +350,8 @@
       rms: Object.assign({}, o.rms, s.rms),
       done: d.done,
       doneAt: d.doneAt,
-      log: mergeLog(a.log, b.log, remoteNewer)
+      log: mergeLog(a.log, b.log, remoteNewer),
+      wipedAt: wipeA || wipeB || 0
     };
   }
 
@@ -280,63 +377,26 @@
     return { done: done, doneAt: doneAt };
   }
 
+  // El log es un mapa por día. Los días son independientes: si el celu hizo el
+  // día 5 y la compu el 6, se conservan los dos. Cuando un mismo día está en
+  // ambos lados, gana el que se editó más recientemente (`_mAt`, que program.js
+  // sella en cada cambio del día en curso). Así se propaga TODO: agregar series,
+  // borrarlas, tildar/destildar, la nota, etc. — no sólo lo que suma.
+  // Fallback a nivel de fila (`remoteNewer`) para días sin `_mAt` (previos a v30).
   function mergeLog(a, b, remoteNewer) {
     a = a || {}; b = b || {};
     var out = {}, keys = {};
     Object.keys(a).forEach(function (k) { keys[k] = 1; });
     Object.keys(b).forEach(function (k) { keys[k] = 1; });
     Object.keys(keys).forEach(function (k) {
-      if (!a[k]) out[k] = b[k];
-      else if (!b[k]) out[k] = a[k];
-      else out[k] = mergeLogEntry(a[k], b[k], remoteNewer);
+      var ea = a[k], eb = b[k];
+      if (!ea) { out[k] = eb; return; }
+      if (!eb) { out[k] = ea; return; }
+      var ta = ea._mAt || 0, tb = eb._mAt || 0;
+      if (ta !== tb) out[k] = ta > tb ? ea : eb;
+      else out[k] = remoteNewer ? eb : ea;
     });
     return out;
-  }
-
-  function mergeLogEntry(a, b, remoteNewer) {
-    var p = remoteNewer ? b : a;
-    var s = remoteNewer ? a : b;
-    var entry = {
-      date: a.date || b.date || null,
-      sets: mergeSets(a.sets, b.sets),
-      finishers: Object.assign({}, s.finishers, p.finishers),
-      warmup: Object.assign({}, s.warmup, p.warmup),
-      note: (p.note && String(p.note).trim()) ? p.note : (s.note || ""),
-      timer: mergeTimer(a.timer, b.timer, remoteNewer)
-    };
-    var total = Math.max(a.totalSec || 0, b.totalSec || 0);
-    if (total) entry.totalSec = total;
-    return entry;
-  }
-
-  // Series de un ejercicio: array posicional de {w,r,ts,m}. Nos quedamos con la
-  // versión más completa (más series); a igualdad, la de timestamp más reciente.
-  function mergeSets(a, b) {
-    a = a || {}; b = b || {};
-    var out = {}, keys = {};
-    Object.keys(a).forEach(function (k) { keys[k] = 1; });
-    Object.keys(b).forEach(function (k) { keys[k] = 1; });
-    Object.keys(keys).forEach(function (k) {
-      var la = a[k] || [], lb = b[k] || [];
-      if (la.length !== lb.length) out[k] = la.length > lb.length ? la : lb;
-      else out[k] = maxTs(la) >= maxTs(lb) ? la : lb;
-    });
-    return out;
-  }
-  function maxTs(list) {
-    return (list || []).reduce(function (m, x) { return Math.max(m, (x && x.ts) || 0); }, 0);
-  }
-
-  // Cronómetro de la sesión ({accum, startedAt}). Antes "el que corre gana", lo
-  // que revertía una pausa: si la nube tenía un startedAt viejo, el reloj local
-  // pausado se reanudaba solo. Ahora manda el lado más nuevo a nivel de fila
-  // (pausar hace save() → bumpea meta.localMutatedAt, así que el local gana
-  // recién pausado). Si son iguales, el que tenga más tiempo acumulado.
-  function mergeTimer(a, b, remoteNewer) {
-    if (!a) return b || undefined;
-    if (!b) return a || undefined;
-    if (eq(a, b)) return a;
-    return remoteNewer ? b : a;
   }
 
   /* -------------------------------------------------------------- UI */
