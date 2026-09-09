@@ -1,8 +1,13 @@
 # AppGym — Handoff: módulo "Programa" (plan de pesas AthleanX Max/Size)
 
-Estado al cierre de la sesión del 2026-09-05. Este doc existe para que otra
-sesión de Claude Code continúe **sin necesidad del PDF original** ni de releer
-todo el chat.
+Estado al 2026-09-08. Este doc existe para que otra sesión de Claude Code
+continúe **sin necesidad del PDF original** ni de releer todo el chat.
+
+**Estado del módulo "Programa": las 12 semanas están cargadas y verificadas
+contra la fuente del usuario** (Fase 1 sem 1-4, Fase 2 sem 5-8, Fase 3 sem 9-12).
+Sesiones de pesas, retos de sábado y de cierre, y "Five Alarm" / "Athletic Pillar"
+finishers — estos últimos con `steps` y botón "Empezar finisher" que los corre en
+el runner. Ver secciones FASE 1/2/3 más abajo para las correcciones concretas.
 
 ---
 
@@ -64,7 +69,8 @@ Archivos:
 Categoría **"Retos"** (`category: "inferno"`) con 12 desafíos de acondicionamiento
 del programa, en `js/data.js` (al final del array): `ax-burn-ladder`, `ax-diabol-x`,
 `ax-fire-ice`, `ax-bump-run`, `ax-sprint-ladder`, `ax-tracknophobia`, `ax-hot-plate`,
-`ax-you-in-30-push/pull/legs`, `ax-towering-inferno`, `ax-firemans-carry`.
+`ax-you-in-30` (antes 3 WODs push/pull/legs; ahora uno solo, EMOM `perMinute`
+de 30′), `ax-towering-inferno`, `ax-firemans-carry`.
 Filtro nuevo "Retos" en `index.html`, badge `.badge-inferno` (ámbar), y el gate de
 `renderRoutines()` pasó a `if (routineFilter !== "custom")`.
 
@@ -105,8 +111,29 @@ Sem 2: se invierte (Espalda/Pecho, Isquios/Cuádriceps, Tríceps/Bíceps, Trapec
 - Sem 3-4 "ISO-PRO-PAIN": hold isométrico 60 s → completar el nº de reps del fallo
   original **en 9 min**. Cada vez que descansás, retomás con un hold de 30 s.
 
-**Sáb Sem 1:** Burn Ladder · **Sáb Sem 2:** Diabol-X · **Sáb Sem 3:** Fire and Ice.
-(Semana 4: sábado no figura explícito; el desafío "You in 30" aparece suelto acá.)
+**Sáb Sem 1:** Burn Ladder · **Sáb Sem 2:** Diabol-X · **Sáb Sem 3:** Fire and Ice ·
+**Sáb Sem 4:** The 'You in 30 Minutes' Challenge (`ax-you-in-30`).
+
+### "You in 30 Minutes" (Sáb Sem 4) — estructura real
+**3 bloques de 10′** (empuje / tirón / pierna). Cada bloque es un EMOM: al arrancar
+el minuto hacés las reps del ejercicio de ese minuto y descansás lo que sobra; al
+minuto siguiente cambia el ejercicio. **Si no completás las reps de un minuto a
+tiempo, el bloque termina ahí.** Descanso de 1-2′ (config `restBetweenSec: 90`) y
+arranca el bloque siguiente. Empuje 10 reps/min salvo aclaración; tirón 6; pierna
+10. Minuto 10 de cada bloque: 5 reps + hold abajo 20-40 s según nivel.
+Puntaje = total de minutos completados con éxito entre los 3 bloques (máx 30).
+Tiers: BASIX ≤14 · SOLID 15-19 · PRO 20-25 · ELITE 26-29 · XTREME 30/30.
+
+En el código: un solo WOD `ax-you-in-30`, `type:"emom"` + `perMinute:true`, con 3
+`blocks` de `kind:"emom"` (cada uno con `label` y 10 `items`). `resolvePreset`
+devuelve `segments:[{label,circuit}]`. El runner de `app.js` (`startBlock` /
+`evalMinute` / `endBlock` / `showInterBlock`): reconfigura el `TimerEngine` EMOM
+por bloque (10′), evalúa cada minuto al cambiar de minuto (`onTick` con `st.round`),
+corta el bloque si el minuto no se marcó/no llegó a las reps, muestra la pantalla
+de descanso (countdown) entre bloques y suma `successMinutes` para el puntaje
+final. Botones nuevos en el runner: "Completé el minuto" (`runnerNext` en
+perMinute), "No llegué — cortar bloque" (`#runnerEndBlock`), "Empezar … ahora"
+(`#runnerNextBlock`).
 
 ### FASE 2 — "AX-RSON TRAINING" — Semanas 6-8
 Hipertrofia más clásica. Cada músculo:
@@ -118,8 +145,45 @@ Hipertrofia más clásica. Cada músculo:
 Días: Lun Pecho/Tríceps · Mar Cuádriceps/Isquios · Jue Hombros/Trapecios+Upper Back
 · Vie Espalda/Bíceps.
 
+**CORRECCIONES (fuente del usuario, sem 5 y 6 verificadas):**
+- Días de Fase 2: Lun Pecho/Tríceps · Mar Cuádriceps/Isquios · **Jue
+  Hombros/Trapecios+Upper Back** · Vie Espalda/Bíceps (el `F2_DAYS` ya estaba así).
+- **El ejercicio del drop→iso ROTA por semana** dentro de la superserie [A1, A2]:
+  - **sem 5 y 7 (impares)** → **A2** (2º movimiento): Chest=DB Incline Press,
+    Quads=Barbell Squats, Hams=Hip Thrust, Delts=DB OHP, Traps=Face Pulls,
+    Back=Lat Pulldowns, Bis=DB Straight Bar Curls, Tris=DB Incline Tri Ext.
+  - **sem 6 y 8 (pares)** → **A1** (1er movimiento): Chest=Floor Flys,
+    Quads=Bulgarian Split Squats, Hams=PB Glute Ham Raise, Delts=DB Scaptions,
+    Traps=Barbell Shrugs, Back=Straight-Arm Pushdowns, Bis=DB Spider Curls,
+    Tris=DB Inverted Kickbacks.
+  - En el código: `F2_MUSCLES` ya no tiene `dropIso`; `buildF2Session` calcula
+    `dropIdx = week % 2 === 0 ? 0 : 1` sobre `x.superset`. (7-8 = asunción por
+    paridad; confirmar cuando lleguen esas semanas.)
+- Superset A1 de **Cuádriceps** = Bulgarian Split Squat **hold isométrico al
+  fallo por pierna** (no reps); va en `F2_MUSCLES.Cuádriceps.ssNote`.
+- Finishers **sem 5 y 6** = mismos (`F2_MUSCLES[m].finisher`). **Sem 7 y 8** =
+  mismos entre sí, en `F2_FINISHERS_W78` (Fire on the Floor, Tri-al by Fire,
+  Blast Off, 3rd Degree Lunges, Smoldering Shoulders, Entrapment, Ladder 8, Fire
+  Pit) — verificados contra la fuente en ambas semanas.
+- `buildF2Session`: `week <= 6 ? x.finisher : F2_FINISHERS_W78[m]`.
+- Rotación del drop→iso confirmada por las 4 semanas: **5 y 7 → A2 · 6 y 8 → A1**.
+- Sáb: sem 5 Bump and Run (`ax-bump-run`) · sem 6 Sprint Ladder
+  (`ax-sprint-ladder`) · sem 7 A-Track-Nophobia (`ax-tracknophobia`, reescrito:
+  1 milla/4 vueltas) · sem 8 Hot Plate (`ax-hot-plate`, reescrito: `rounds:2` de
+  la secuencia 200 yd + `single` de sprints; tiers por tiempo). Todos OK.
+- **Five Alarm Finishers → enganchados al runner.** Cada finisher de Fase 2
+  (`F2_MUSCLES[m].finisher` y `F2_FINISHERS_W78[m]`) ahora tiene
+  `{ name, rounds, protocol, steps:[{name,detail,reps}] }` (`reps:0` = al fallo /
+  hold / libre). `buildF2Session` los pasa con `steps`+`rounds`. La tarjeta del
+  finisher lista los pasos numerados + botón **"Empezar finisher"** →
+  `startFinisher()` arma un WOD con `finisherWod()` (`type:"rounds"` si rounds>1,
+  si no `"for-time"`) y lo abre con **`window.AppGym.startWod(wod)`** (API nueva
+  en app.js, hermana de `startWodById`). Ladder 8 se expande con `ladder8Steps()`
+  (16 pasos). Los finishers de Fase 1 (`kind:"propain"`) y Fase 3 (`note` sin
+  `steps`) no cambian.
+
 Ejercicios (Sem 6, se repiten en 7-8 cambiando finishers):
-- **Pecho**: Floor Flys ⇒ Incline Bench Press // Floor Flys (10RM) ⇒ iso // Bench Press.
+- **Pecho**: Floor Flys ⇒ Incline Bench Press // **Incline Bench Press** (10RM) ⇒ iso // Bench Press.
   Finisher "Pec Purgatory" (3 rondas): DB Incline Bench midrange ×F ⇒ Lower Dip Stretch Hold 30s ⇒ Cable Cross Contraction burnout.
 - **Tríceps**: DB Inverted Kickbacks ⇒ DB Incline Tricep Ext // (10RM)⇒iso // Close Grip Bench.
   Finisher "Steel Moving": Triceps Pushdowns (12RM) ×F ⇒ 1½× ese nº sin soltar.
@@ -140,31 +204,37 @@ Sem 7-8 cambian sólo los finishers (Smoldering Shoulders, Entrapment, Ladder 8,
 Fire Pit, Fire on the Floor, Tri-al by Fire, Blast Off, 3rd Degree Lunges...).
 **Sáb Sem 5:** Bump and Run · **Sáb Sem 6:** Sprint Ladder · **Sáb Sem 7:** A-Track-Nophobia · **Sáb Sem 8:** Hot Plate.
 
-### FASE 3 — "MAX DEVELOPMENT" / BACKFIRE TRAINING (tempos) — Semanas 9-11
-- **Días concéntricos**: peso 12RM, tempo **1/1/5**, **50 reps por ejercicio**.
-  Descanso = 60 s de estiramiento.
-- **Días excéntricos**: peso 6RM, tempo **5/1/1**, **25 reps por ejercicio**.
-  Descanso = 60 s de flexión (flexing).
+### FASE 3 — "MAX DEVELOPMENT" / BACKFIRE TRAINING — Semanas 9-12 (verificada)
+- **Días concéntricos**: 12RM, tempo **1/1/5**, **50 reps por ejercicio**.
+- **Días excéntricos**: 6RM, tempo **5/1/1**, **25 reps por ejercicio**.
+- Completá TODAS las reps de un ejercicio antes de pasar al siguiente.
+- "Cada vez que descansás": 60 s del **estiramiento** (conc) o la **flex /
+  contracción isométrica** (ecc) del músculo trabajado, y seguís repitiendo.
+- **4 bloques** de 4 movimientos (`F3_BLOCKS`): pushA, pushB, pullA, pullB. Cada
+  ítem tiene su `stretch` y su `flex` pareados.
+- **Calendario real por semana** en `F3_SCHEDULE` (cada semana distinta; días que
+  no figuran = descanso; sem 11 lun = OFF):
+  - **W9:** Lun pushA conc · Mar pushA ecc · Jue pullA conc · Vie pullA ecc · Dom pushB conc
+  - **W10:** Lun pushB ecc · Mié pullB conc · Jue pullB ecc · Sáb pushA conc · Dom pushA ecc
+  - **W11:** Mar pullA conc · Mié pullA ecc · Vie pushB conc · Sáb pushB ecc
+  - **W12:** Lun pullB conc · Mar pullB ecc · **Jue Fireman's Carry · Vie Towering Inferno**
+- **Athletic Pillar finishers** (`F3_PILLARS`, 8): linear-loco (1 milla),
+  nonlinear-loco (Agility Wheel), crawl, jump (soga 200/100/100/100/200),
+  static-flex, static-balance, dynamic-balance, dynamic-flex (2 rondas, 1 por
+  pierna). Todos con `steps` → "Empezar finisher" corre en el runner.
+- `phaseOf` ahora: `<=4 → 1, <=8 → 2, resto → 3`. `weekPlan` maneja la sem 12
+  jue/vie como retos y el resto de la Fase 3 por `F3_SCHEDULE`.
 
-Rotación semanal (Sem 9):
-| Día | Bloque | Ejercicios (reps concéntrico / excéntrico) | Finisher |
-|---|---|---|---|
-| Lun | TB-PUSH conc. | DB Bench Press · Dips · DB Thrusters · Front Squats (50/25) | 1 milla de carrera |
-| Mar | TB-PUSH excén. | mismos (25) | Circuito de flexibilidad estática |
-| Jue | TB-PULL conc. | Underhand Lat Pulldown · DB Incline Variable Curls · Seated DB Shrug · PB Glute/Ham Raise (50) | Agility Wheel 5-8 rondas |
-| Vie | TB-PULL excén. | mismos (25) | Crawl Circuit (Alpine Climbers, Kickthroughs, Scorpions, Crab Stretch) |
-| Dom | TB-PUSH conc. | Floor Flys · DB Side Lateral Crossover Raises · Barbell Deadlifts · DB Phelps Press (50) | Jump Rope 800 saltos |
-
-Sem 10-11: misma mecánica, finishers = "Athletic Pillars" (Static Balance, Dynamic
-Balance, Dynamic Flexibility, Locomotion).
-
-### SEMANA 12 — cierre
-- Jue: **Fireman's Carry Challenge** (ya cargado como reto).
-- Vie: **The Towering Inferno** (ya cargado como reto).
+### Retos de cierre (Sem 12) — reescritos
+- **`ax-firemans-carry`**: `single` con chest carry ×4, farmer's ×2, overhead ×4
+  (sprint de vuelta cada viaje). Objetivo < 4:30.
+- **`ax-towering-inferno`**: `single` de **15 "pisos"** (R1 10RM / R2 15RM / R3
+  peso corporal, 5 pisos c/u; reps + holds crecientes 5→15/20/25 s). Puntaje =
+  pisos completados. Tiers BASIX <8 · SOLID 8-9 · PRO 10-11 · ELITE 12-14 · XTREME 15.
 
 ### Tiers de puntuación (para desafíos con score)
-BASIX / SOLID / PRO / ELITE / XTREME. Los umbrales concretos están en la
-`description` de cada reto en `data.js` (Hot Plate, You in 30, Towering Inferno).
+BASIX / SOLID / PRO / ELITE / XTREME. Los umbrales están en la `description` de
+cada reto en `data.js` (Hot Plate, You in 30, Towering Inferno).
 
 ---
 

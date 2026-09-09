@@ -88,7 +88,12 @@ window.EXERCISES = [
      { kind: 'run', meters, detail?, name? }                       -> carrera
      { kind: 'rest', seconds, detail? }                            -> descanso
      { kind: 'amrap', items: [...] }                               -> circuito AMRAP
-     { kind: 'emom', items: [...] }                                -> tarea por minuto
+     { kind: 'emom', items: [...] }                                -> circuito por minuto
+       + wod.perMinute: true  -> cada bloque emom es un EMOM de N minutos (N = items),
+         un ejercicio por minuto. Si un minuto no se completa a tiempo el bloque
+         corta; wod.restBetweenSec de descanso y sigue el bloque emom siguiente.
+         Puntaje = minutos completados sumando todos los bloques. Usado por
+         "You in 30" (3 bloques de 10').
    ========================================================================== */
 window.WODS = [
   /* ---------------- Benchmark "Girls" ---------------- */
@@ -3130,103 +3135,104 @@ window.WODS = [
   },
   {
     id: "ax-tracknophobia", name: "A-Track-Nophobia", category: "inferno", type: "for-time", timeCap: null,
-    description: "Semana 7 · Metabolic Arson. Workout de pista, 4 vueltas. En cada vuelta cambiás lo que hacés al recorrer la curva.",
+    description: "Semana 7 · Metabolic Arson. 1 milla en pista (4 vueltas de 400 m). Estructura de cada mitad de vuelta: flexiones al fallo → sprint 100 m (la recta) → recorrer la curva de 100 m con el ejercicio de esa vuelta. Descansá sólo lo necesario. Sin pista: marcá 100 m. Corré al máximo TUYO con buena forma. Si terminás la milla y podés otra, dale de nuevo.",
     blocks: [
       { kind: "single", items: [
-        { name: "Vuelta 1", detail: "flexiones al fallo, sprint 100 m, caminar curva 100 m (×2)", reps: 1 },
-        { name: "Vuelta 2", detail: "igual, pero la curva = zancadas caminando", reps: 1 },
-        { name: "Vuelta 3", detail: "igual, pero la curva = sentadillas deslizando", reps: 1 },
-        { name: "Vuelta 4", detail: "sprint la pista entera", reps: 1 }
+        { name: "Vuelta 1 — curva caminando", detail: "×2: flexiones al fallo · sprint 100 m · caminar la curva 100 m", reps: 1 },
+        { name: "Vuelta 2 — curva con zancadas", detail: "×2: flexiones al fallo · sprint 100 m · zancadas caminando 100 m", reps: 1 },
+        { name: "Vuelta 3 — curva con slide squats", detail: "×2: flexiones al fallo · sprint 100 m · slide squats caminando 100 m", reps: 1 },
+        { name: "Flexiones finales al fallo", detail: "al terminar la 2ª curva de la vuelta 3", reps: 1 },
+        { name: "Vuelta 4 — sprint completo", detail: "sprint las 4 rectas y curvas, la pista entera (400 m)", reps: 1 }
       ]}
     ]
   },
   {
     id: "ax-hot-plate", name: "The Hot Plate Challenge", category: "inferno", type: "for-time", timeCap: null,
-    description: "Semana 8 · Puntaje = tiempo total (incluye flexiones y sprints). Secuencia de 200 yd, 2 veces. Disco: ≤135 lb → 25 lb / 136-199 → 35 lb / 200+ → 45 lb. 15 flexiones cada vez que se cae el disco. Lanzamientos totales ÷ 2 = sprints de 20 yd para terminar. Tiers: BASIX >13 min · SOLID 11-13 · PRO 9:31-11 · ELITE 8:31-9:30 · XTREME <8:30.",
+    description: "Semana 8 · Metabolic Arson. Hacé la secuencia de 200 yd DOS veces y después los sprints. Puntaje = tiempo total hasta terminar (incluye flexiones y sprints).\n\nDisco según tu peso: ≤135 lb → 25 lb · 136-199 lb → 35 lb · 200+ lb → 45 lb.\n\n100 yd de ida: alterná push press throw → discus izquierda → discus derecha hasta cruzar el disco la línea de gol opuesta; sprint hasta el disco en cada lanzamiento. Contá cuántos lanzamientos te llevó.\n100 yd de vuelta: acarreo del disco a un lado con pinza de tres dedos. La 2ª vuelta, acarreo con el brazo contrario. Cada vez que se te cae el disco: pará y hacé 15 flexiones.\n\nAl terminar las 2 secuencias: total de lanzamientos ÷ 2 = cantidad de sprints de 20 yd para cerrar.\n\nTiers: BASIX >13:00 · SOLID 11:01-13:00 · PRO 9:31-11:00 · ELITE 8:31-9:30 · XTREME <8:30.",
     blocks: [
+      { kind: "rounds", rounds: 2, items: [
+        { name: "100 yd ida · lanzamientos", detail: "push press throw ⇒ discus izq ⇒ discus der, hasta cruzar la línea de gol (sprint al disco cada vez). Contá los lanzamientos.", reps: 1 },
+        { name: "100 yd vuelta · acarreo", detail: "pinza de 3 dedos a un lado (R2: brazo contrario). 15 flexiones cada vez que se cae.", reps: 1 }
+      ]},
       { kind: "single", items: [
-        { name: "100 yd ida", detail: "push press throw + discus izq + discus der (sprint al disco cada vez)", reps: 1 },
-        { name: "100 yd vuelta", detail: "acarreo del disco a una mano (15 flexiones si se cae)", reps: 1 },
-        { name: "Repetir la secuencia de 200 yd", detail: "2 veces en total", reps: 1 },
-        { name: "Sprints finales de 20 yd", detail: "lanzamientos totales ÷ 2", reps: 0 }
+        { name: "Sprints de 20 yd", detail: "cantidad = total de lanzamientos de las 2 vueltas ÷ 2", reps: 1 }
       ]}
     ]
   },
   {
-    id: "ax-you-in-30-push", name: "You in 30 · Push", category: "inferno", type: "for-time", timeCap: 10 * 60,
-    description: "Desafío 'You in 30 Minutes' — segmento PUSH. 1 minuto por ejercicio (10 min). 10 reps de cada variación salvo indicado; descansá el resto del minuto. Contá los minutos completados con éxito. Tiers sobre los 30 min: BASIX ≤14 · SOLID 15-19 · PRO 20-25 · ELITE 26-29 · XTREME 30/30.",
+    id: "ax-you-in-30", name: "You in 30 Minutes", category: "inferno", type: "emom", timeCap: 30 * 60,
+    perMinute: true, restBetweenSec: 90,
+    description: "Reto 'You in 30 Minutes' (Semana 4 · sábado). Tres bloques de 10 minutos: EMPUJE, TIRÓN y PIERNA. Dentro de cada bloque es un EMOM: al arrancar cada minuto hacés las reps del ejercicio y descansás lo que sobra; al minuto siguiente cambia el ejercicio.\n\nSi en algún minuto NO llegás a completar las reps a tiempo, el bloque termina ahí. Descansás 1-2 minutos para prepararte y arrancás el bloque siguiente.\n\nEmpuje: 10 reps por minuto (salvo aclaración). Tirón: 6 reps por minuto. Pierna: 10 reps por minuto. Minuto 10 de cada bloque: 5 reps + hold en la posición baja 20 a 40 s según tu nivel.\n\nPuntaje = total de minutos completados con éxito entre los 3 bloques (máx 30).\nTiers: BASIX ≤14 · SOLID 15-19 · PRO 20-25 · ELITE 26-29 · XTREME 30/30.",
     blocks: [
-      { kind: "single", items: [
-        { name: "Min 1 · Flexiones estándar", detail: "x10", reps: 10 },
-        { name: "Min 2 · Prowler pushups", detail: "x10", reps: 10 },
-        { name: "Min 3 · Archers", detail: "x5 por lado", reps: 10 },
-        { name: "Min 4 · Posted pushups", detail: "x5 por brazo", reps: 10 },
-        { name: "Min 5 · Rolling plyo pushups", detail: "x10", reps: 10 },
-        { name: "Min 6 · Hannibal pushups", detail: "x10", reps: 10 },
-        { name: "Min 7 · Foot plant pushups", detail: "x10", reps: 10 },
-        { name: "Min 8 · Cliffhanger pushups", detail: "x10", reps: 10 },
-        { name: "Min 9 · Hand plant pushups", detail: "x10", reps: 10 },
-        { name: "Min 10 · Flexiones", detail: "x5 (hold 20 s / 40 s)", reps: 5 }
+      { kind: "emom", label: "Empuje", items: [
+        { name: "Flexiones estándar", detail: "Empuje · 10 reps", reps: 10 },
+        { name: "Prowler pushups", detail: "Empuje · 10 reps", reps: 10 },
+        { name: "Archer pushups", detail: "Empuje · 5 por lado", reps: 10 },
+        { name: "Posted pushups", detail: "Empuje · 5 por brazo", reps: 10 },
+        { name: "Rolling plyo pushups", detail: "Empuje · 10 reps", reps: 10 },
+        { name: "Hannibal pushups", detail: "Empuje · 10 reps", reps: 10 },
+        { name: "Foot plant pushups", detail: "Empuje · 10 reps", reps: 10 },
+        { name: "Cliffhanger pushups", detail: "Empuje · 10 reps", reps: 10 },
+        { name: "Hand plant pushups", detail: "Empuje · 10 reps", reps: 10 },
+        { name: "Flexiones + hold", detail: "Empuje · 5 reps y hold abajo 20-40 s según nivel", reps: 5 }
+      ]},
+      { kind: "emom", label: "Tirón", items: [
+        { name: "Dominadas estándar", detail: "Tirón · 6 reps", reps: 6 },
+        { name: "Commando pullups", detail: "Tirón · 3 por lado", reps: 6 },
+        { name: "Dominadas 1½", detail: "Tirón · 6 reps", reps: 6 },
+        { name: "Around the world pullups", detail: "Tirón · 3 por dirección", reps: 6 },
+        { name: "Plyo pullups", detail: "Tirón · 6 reps", reps: 6 },
+        { name: "Cyclone pullups", detail: "Tirón · 6 reps", reps: 6 },
+        { name: "Front lever pullups", detail: "Tirón · 6 reps", reps: 6 },
+        { name: "1 arm assisted pullups", detail: "Tirón · 3 por brazo", reps: 6 },
+        { name: "Headbanger pullups", detail: "Tirón · 6 reps", reps: 6 },
+        { name: "Dominadas lentas", detail: "Tirón · 6 reps (5 s subida / 5 s bajada)", reps: 6 }
+      ]},
+      { kind: "emom", label: "Pierna", items: [
+        { name: "Jump squats", detail: "Pierna · 10 reps", reps: 10 },
+        { name: "Prisoner drop step lunges", detail: "Pierna · 10 por pierna", reps: 10 },
+        { name: "Tuck jumps", detail: "Pierna · 10 reps", reps: 10 },
+        { name: "Sentadillas 1½", detail: "Pierna · 10 reps", reps: 10 },
+        { name: "Sprinter lunge leaps", detail: "Pierna · 10 por pierna", reps: 10 },
+        { name: "Split squat lateral jumps", detail: "Pierna · 10 reps (3 pasos y salto)", reps: 10 },
+        { name: "Ninja tuck jumps", detail: "Pierna · 10 reps", reps: 10 },
+        { name: "Levitation squats", detail: "Pierna · 10 por pierna", reps: 10 },
+        { name: "180 jump squats", detail: "Pierna · 10 reps", reps: 10 },
+        { name: "Jump squats + hold", detail: "Pierna · 5 reps y hold abajo 20-40 s según nivel", reps: 5 }
       ]}
     ]
   },
   {
-    id: "ax-you-in-30-pull", name: "You in 30 · Pull", category: "inferno", type: "for-time", timeCap: 10 * 60,
-    description: "Desafío 'You in 30 Minutes' — segmento PULL. 1 minuto por ejercicio (10 min). 6 reps de cada variación salvo indicado; descansá el resto del minuto.",
+    id: "ax-towering-inferno", name: "The Towering Inferno", category: "inferno", type: "for-time", timeCap: null,
+    description: "Semana 12 · Reto final. 3 rondas de 5 'pisos'. En cada piso: las reps indicadas seguidas de un hold isométrico; repetís reps+hold sumando 5 s al hold cada vez.\n\nRonda 1 (pesado, 10RM): 3 reps ⇒ hold 5 s · 3 reps ⇒ 10 s · 3 reps ⇒ 15 s.\nRonda 2 (moderado, 15RM): agrega un hold más, hasta 20 s (5, 10, 15, 20).\nRonda 3 (peso corporal): 5 reps por serie, 5 holds hasta 25 s (5, 10, 15, 20, 25).\n\nPuntaje = pisos completados con éxito (de 15).\nTiers: BASIX <8 · SOLID 8-9 · PRO 10-11 · ELITE 12-14 · XTREME 15/15.",
     blocks: [
       { kind: "single", items: [
-        { name: "Min 1 · Dominadas estándar", detail: "x6", reps: 6 },
-        { name: "Min 2 · Commando pullups", detail: "x3 por lado", reps: 6 },
-        { name: "Min 3 · 1½ pullups", detail: "x6", reps: 6 },
-        { name: "Min 4 · Around the world pullups", detail: "x3 por dirección", reps: 6 },
-        { name: "Min 5 · Plyo pullups", detail: "x6", reps: 6 },
-        { name: "Min 6 · Cyclone pullups", detail: "x6", reps: 6 },
-        { name: "Min 7 · Front lever pullups", detail: "x6", reps: 6 },
-        { name: "Min 8 · 1 arm assisted pullups", detail: "x3 por brazo", reps: 6 },
-        { name: "Min 9 · Headbanger pullups", detail: "x6", reps: 6 },
-        { name: "Min 10 · Dominadas", detail: "x6 (5 s subida / 5 s bajada)", reps: 6 }
-      ]}
-    ]
-  },
-  {
-    id: "ax-you-in-30-legs", name: "You in 30 · Legs", category: "inferno", type: "for-time", timeCap: 10 * 60,
-    description: "Desafío 'You in 30 Minutes' — segmento LEGS. 1 minuto por ejercicio (10 min). 10 reps de cada variación salvo indicado; descansá el resto del minuto.",
-    blocks: [
-      { kind: "single", items: [
-        { name: "Min 1 · Jump squats", detail: "x10", reps: 10 },
-        { name: "Min 2 · Prisoner drop step lunges", detail: "x10 por pierna", reps: 10 },
-        { name: "Min 3 · Tuck jumps", detail: "x10", reps: 10 },
-        { name: "Min 4 · 1½ squats", detail: "x10", reps: 10 },
-        { name: "Min 5 · Sprinter lunge leaps", detail: "x10 por pierna", reps: 10 },
-        { name: "Min 6 · Split squat lateral jumps", detail: "x10 (3 pasos y salto)", reps: 10 },
-        { name: "Min 7 · Ninja tuck jumps", detail: "x10", reps: 10 },
-        { name: "Min 8 · Levitation squats", detail: "x10 por pierna", reps: 10 },
-        { name: "Min 9 · 180 jump squats", detail: "x10", reps: 10 },
-        { name: "Min 10 · Jump squats", detail: "x5 (hold 20 s / 40 s)", reps: 5 }
-      ]}
-    ]
-  },
-  {
-    id: "ax-towering-inferno", name: "The Towering Inferno", category: "inferno", type: "rounds", timeCap: null,
-    description: "Desafío final. 3 rondas: pesado (10RM), moderado (15RM), peso corporal. En cada 'piso': las reps indicadas + un hold isométrico que crece 5 s. Puntaje = pisos completados. Tiers: BASIX <8 · SOLID 8-9 · PRO 10-11 · ELITE 12-14 · XTREME 15/15.",
-    blocks: [
-      { kind: "rounds", rounds: 3, items: [
-        { name: "DB bench press", detail: "R1/R2: 3 reps + hold · R3: flexiones x5 + hold", reps: 3 },
-        { name: "Sentadillas con barra", detail: "R1/R2: 3 reps + hold · R3: prisoner jump squats x5 + hold", reps: 3 },
-        { name: "Press militar de pie", detail: "R1/R2: 3 reps + hold · R3: pike pushups x5 + hold", reps: 3 },
-        { name: "Curl con barra", detail: "R1/R2: 3 reps + hold · R3: inverted chins x5 + hold", reps: 3 },
-        { name: "Rope pushdowns", detail: "R1/R2: 3 reps + hold · R3: diamond cutter pushups x5 + hold", reps: 3 }
+        { name: "Piso 1 · DB Bench Press", detail: "R1 · 10RM · 3 reps ⇒ hold 5/10/15 s", reps: 1 },
+        { name: "Piso 2 · BB Squats", detail: "R1 · 10RM · 3 reps ⇒ hold 5/10/15 s", reps: 1 },
+        { name: "Piso 3 · Standing OHP", detail: "R1 · 10RM · 3 reps ⇒ hold a 90° 5/10/15 s", reps: 1 },
+        { name: "Piso 4 · BB Curls", detail: "R1 · 10RM · 3 reps ⇒ hold a 90° 5/10/15 s", reps: 1 },
+        { name: "Piso 5 · Rope Pushdowns", detail: "R1 · 10RM · 3 reps ⇒ hold a 90° 5/10/15 s", reps: 1 },
+        { name: "Piso 6 · DB Bench Press", detail: "R2 · 15RM · 3 reps ⇒ hold 5/10/15/20 s", reps: 1 },
+        { name: "Piso 7 · BB Squats", detail: "R2 · 15RM · 3 reps ⇒ hold 5/10/15/20 s", reps: 1 },
+        { name: "Piso 8 · Standing OHP", detail: "R2 · 15RM · 3 reps ⇒ hold a 90° 5/10/15/20 s", reps: 1 },
+        { name: "Piso 9 · BB Curls", detail: "R2 · 15RM · 3 reps ⇒ hold a 90° 5/10/15/20 s", reps: 1 },
+        { name: "Piso 10 · Rope Pushdowns", detail: "R2 · 15RM · 3 reps ⇒ hold a 90° 5/10/15/20 s", reps: 1 },
+        { name: "Piso 11 · Pushups", detail: "R3 · peso corporal · 5 reps ⇒ hold 5/10/15/20/25 s", reps: 1 },
+        { name: "Piso 12 · Prisoner Jump Squats", detail: "R3 · 5 reps ⇒ hold 5/10/15/20/25 s", reps: 1 },
+        { name: "Piso 13 · Pike Pushups", detail: "R3 · 5 reps ⇒ hold 5/10/15/20/25 s", reps: 1 },
+        { name: "Piso 14 · Inverted Chins", detail: "R3 · 5 reps ⇒ hold 5/10/15/20/25 s", reps: 1 },
+        { name: "Piso 15 · Diamond Cutter Pushups", detail: "R3 · 5 reps ⇒ hold 5/10/15/20/25 s", reps: 1 }
       ]}
     ]
   },
   {
     id: "ax-firemans-carry", name: "Fireman's Carry Challenge", category: "inferno", type: "for-time", timeCap: null,
-    description: "Semana 12 · Tramo de 30 yd con 4 discos de barra. Objetivo: terminar en menos de 4 min 30 s.",
+    description: "Semana 12 · Athletic Pillar bonus: Resisted Locomotion. Tramo de 30 yd, 4 discos de barra.\n\n1) Chest carry: llevá 1 disco al pecho los 30 yd, soltalo y sprint de vuelta. 4 viajes (los 4 discos al otro lado).\n2) Farmer's carry: 1 disco en cada mano de vuelta (2 viajes), sprint entre viajes.\n3) Overhead carry: cada disco individual por encima de la cabeza (4 viajes), sprint entre viajes.\n\nObjetivo: toda la secuencia en menos de 4 min 30 s.",
     blocks: [
       { kind: "single", items: [
-        { name: "Chest plate carry 30 yd + sprint de vuelta", detail: "4 viajes", reps: 4 },
-        { name: "Farmer's carry 30 yd + sprint de vuelta", detail: "2 viajes", reps: 2 },
-        { name: "Overhead carry 30 yd + sprint de vuelta", detail: "4 viajes", reps: 4 }
+        { name: "Chest carry 30 yd + sprint de vuelta", detail: "4 viajes (1 disco por vez)", reps: 4 },
+        { name: "Farmer's carry 30 yd + sprint de vuelta", detail: "2 viajes (1 disco en cada mano)", reps: 2 },
+        { name: "Overhead carry 30 yd + sprint de vuelta", detail: "4 viajes (1 disco por vez)", reps: 4 }
       ]}
     ]
   }

@@ -83,39 +83,98 @@
 
   /* ======================================================================
      Fase 2 — AX-RSON (por músculo)
+     superset: [A1, A2]. El drop→iso usa A1 o A2 según la semana (ver dropIdx
+     en buildF2Session: sem 5/7 → A2 · sem 6/8 → A1). straight: básico de las
+     5 series rectas.
+     finisher: { name, rounds, protocol (resumen para la tarjeta), steps:[{name,
+       detail, reps}] }. reps: 0 = al fallo / hold / libre. Con `steps` el
+     finisher se puede "Empezar" y corre en el runner de app.js.
      ====================================================================== */
+  // Escalera de Ladder 8: pullover 8→1 alternando con dominadas 1→8.
+  function ladder8Steps() {
+    const s = [];
+    for (let n = 8; n >= 1; n--) {
+      s.push({ name: "DB Pullover", detail: "10RM", reps: n });
+      s.push({ name: "Dominadas", detail: "", reps: 9 - n });
+    }
+    return s;
+  }
   const F2_MUSCLES = {
     "Pecho": {
-      superset: ["Floor Flys", "Press Inclinado"], dropIso: "Floor Flys", straight: "Press de Banca",
-      finisher: { name: "Pec Purgatory", protocol: "3 rondas — DB Incline Bench (midrange) ×F ⇒ Lower Dip Stretch Hold 30 s ⇒ Cable Cross Contraction (burnout)" }
+      superset: ["Floor Flys", "Press Inclinado con Mancuernas"], straight: "Press de Banca",
+      finisher: { name: "Pec Purgatory · 3 rondas", rounds: 3,
+        protocol: "3 rondas sin descanso: DB Incline Bench Press (8RM, rango medio) al fallo ⇒ Lower Dip Stretch Hold 30 s ⇒ Cable Cross Contraction (burnout).",
+        steps: [
+          { name: "DB Incline Bench Press", detail: "8RM, sólo rango medio · al fallo", reps: 0 },
+          { name: "Lower Dip Stretch Hold", detail: "hold 30 s en el punto bajo", reps: 0 },
+          { name: "Cable Cross Contraction", detail: "burnout al fallo", reps: 0 }
+        ] }
     },
     "Tríceps": {
-      superset: ["DB Inverted Kickbacks", "Extensión de Tríceps en Banco Inclinado (DB)"], dropIso: "Extensión de Tríceps en Banco Inclinado (DB)", straight: "Press Cerrado (Close Grip Bench)",
-      finisher: { name: "Steel Moving", protocol: "Triceps Pushdowns (12RM) ×F ⇒ 1½× ese número sin soltar" }
+      superset: ["DB Inverted Kickbacks", "Extensión de Tríceps en Banco Inclinado (DB)"], straight: "Press Cerrado (Close Grip Bench)",
+      finisher: { name: "Steel Moving · 1 ronda", rounds: 1,
+        protocol: "Triceps Pushdowns (12RM) al fallo; sin soltar la torre seguí hasta 1½× ese número. Si frenás: 10 s máx y +3 reps al total.",
+        steps: [
+          { name: "Triceps Pushdowns", detail: "12RM · al fallo (ej. 11)", reps: 0 },
+          { name: "Seguir sin soltar la torre", detail: "hasta 1½× el nº del fallo (ej. 17). Si frenás: 10 s y +3 reps", reps: 0 }
+        ] }
     },
     "Cuádriceps": {
-      superset: ["Bulgarian Split Squat (hold al fallo / pierna)", "Sentadilla con Barra"], dropIso: "Sentadilla con Barra", straight: "Zancadas Inversas Alternas (DB)",
-      finisher: { name: "Liquid Legs", protocol: "DB Goblet Squat ×100 total · Wall Sit 1 min en cada minuto par" }
+      superset: ["Bulgarian Split Squat", "Sentadilla con Barra"], ssNote: "En la superserie, el Bulgarian Split Squat es un hold isométrico al fallo por pierna (no reps); usá tu 6-9RM.", straight: "Zancadas Inversas Alternas (DB)",
+      finisher: { name: "Liquid Legs · 1 ronda", rounds: 1,
+        protocol: "100 DB Goblet Squats en total (DB = press militar a 1 mano). En cada minuto PAR, Wall Sit de 1 min. Terminás al llegar a 100.",
+        steps: [
+          { name: "DB Goblet Squat", detail: "100 reps en total · DB = press militar a 1 mano", reps: 100 },
+          { name: "Wall Sit", detail: "1 min en cada minuto par (2, 4, 6…) hasta terminar las 100", reps: 0 }
+        ] }
     },
     "Isquios": {
-      superset: ["Physioball Glute-Ham Raise", "Hip Thrust con Barra"], dropIso: "Hip Thrust con Barra", straight: "Peso Muerto Rumano (piernas rígidas)",
-      finisher: { name: "Asses to Ashes", protocol: "KB Swings ×100 · Long-Legged Bridge Hold 1 min en minuto par" }
+      superset: ["Physioball Glute-Ham Raise", "Hip Thrust con Barra"], straight: "Peso Muerto Rumano (piernas rígidas)",
+      finisher: { name: "Asses to Ashes · 1 ronda", rounds: 1,
+        protocol: "100 KB Swings en total (KB ~50-80 lb). En cada minuto PAR, Long-Legged Bridge Hold de 1 min. Terminás al llegar a 100.",
+        steps: [
+          { name: "KB Swings", detail: "100 reps en total · KB ~50-80 lb", reps: 100 },
+          { name: "Long-Legged Bridge Hold", detail: "1 min en cada minuto par hasta terminar las 100", reps: 0 }
+        ] }
     },
     "Hombros": {
-      superset: ["DB Scaptions", "Press Militar (DB)"], dropIso: "Press Militar (DB)", straight: "Clean and Press con Barra",
-      finisher: { name: "Cannonball Run", protocol: "DB Side Laterals (8RM) ×F bajando el rack hasta 10 lb ⇒ DB Shoulder Press ×F subiendo" }
+      superset: ["DB Scaptions", "Press Militar (DB)"], straight: "Clean and Press con Barra",
+      finisher: { name: "Cannonball Run · 1 ronda", rounds: 1,
+        protocol: "DB Side Laterals (8RM) al fallo bajando el rack hasta 10 lb ⇒ DB Shoulder Press al fallo subiendo el rack al peso inicial (push press si hace falta).",
+        steps: [
+          { name: "DB Side Laterals — run the rack DOWN", detail: "arrancá 8RM · al fallo en cada peso bajando hasta 10 lb", reps: 0 },
+          { name: "DB Shoulder Press — run the rack UP", detail: "al fallo en cada peso subiendo hasta el inicial (push press si hace falta)", reps: 0 }
+        ] }
     },
     "Trapecios": {
-      superset: ["Encogimientos con Barra", "Face Pulls"], dropIso: "Face Pulls", straight: "High Pulls (DB)",
-      finisher: { name: "Inferno Crossfire", protocol: "3 rondas — Overhead Trap Raises ×30 ⇒ Band Pull-Aparts ×30 ⇒ DB Shrug Holds 30 s" }
+      superset: ["Encogimientos con Barra", "Face Pulls"], straight: "High Pulls (DB)",
+      finisher: { name: "Inferno Crossfire · 3 rondas", rounds: 3,
+        protocol: "3 rondas sin descanso: Overhead Trap Raises ×30 ⇒ Band Pull-Aparts ×30 ⇒ DB Shrug Holds 30 s (DB = tu 6-8RM de shrug).",
+        steps: [
+          { name: "Overhead Trap Raises", detail: "30 reps", reps: 30 },
+          { name: "Band Pull-Aparts", detail: "30 reps", reps: 30 },
+          { name: "DB Shrug Holds", detail: "hold 30 s · DB de tu 6-8RM de shrug", reps: 0 }
+        ] }
     },
     "Espalda": {
-      superset: ["Straight-Arm Pushdowns", "Jalón al Pecho (Lat Pulldown)"], dropIso: "Jalón al Pecho (Lat Pulldown)", straight: "Remo con Barra",
-      finisher: { name: "Alphabet Arson", protocol: "3 rondas — Prone Incline DB Y's (15RM) ×F ⇒ T's ×F ⇒ I's ×F ⇒ Hiperextensiones ×F" }
+      superset: ["Straight-Arm Pushdowns", "Jalón al Pecho (Lat Pulldown)"], straight: "Remo con Barra",
+      finisher: { name: "Alphabet Arson · 3 rondas", rounds: 3,
+        protocol: "3 rondas: Prone Incline DB Y's (15RM) ⇒ T's ⇒ I's ⇒ Hiperextensiones, todas al fallo. Mantené la hiperextensión isométrica durante todo el circuito.",
+        steps: [
+          { name: "Prone Incline DB Y's", detail: "15RM · al fallo", reps: 0 },
+          { name: "Prone Incline DB T's", detail: "al fallo", reps: 0 },
+          { name: "Prone Incline DB I's", detail: "al fallo", reps: 0 },
+          { name: "Hiperextensiones", detail: "al fallo", reps: 0 }
+        ] }
     },
     "Bíceps": {
-      superset: ["DB Spider Curls", "Curl con Barra Recta (DB)"], dropIso: "Curl con Barra Recta (DB)", straight: "Curl Martillo (DB)",
-      finisher: { name: "Hang 'Em, Bang 'Em or Burn", protocol: "Standing DB Curls (12RM) ×F ⇒ 1½× ese número sin soltar" }
+      superset: ["DB Spider Curls", "Curl con Barra Recta (DB)"], straight: "Curl Martillo (DB)",
+      finisher: { name: "Hang 'Em, Bang 'Em or Burn · 1 ronda", rounds: 1,
+        protocol: "Standing DB Curls (12RM) al fallo; sin bajar las mancuernas seguí hasta 1½× ese número. Si las bajás: 10 s máx y +3 reps al total.",
+        steps: [
+          { name: "Standing DB Curls", detail: "12RM · al fallo (ej. 11)", reps: 0 },
+          { name: "Seguir sin bajar las mancuernas", detail: "hasta 1½× el nº del fallo (ej. 17). Si las bajás: 10 s y +3 reps", reps: 0 }
+        ] }
     }
   };
   const F2_DAYS = [
@@ -125,32 +184,180 @@
     { day: "fri", muscles: ["Espalda", "Bíceps"] }
   ];
 
+  // Semanas 5-6: usan F2_MUSCLES[m].finisher.
+  // Semanas 7-8: comparten estos finishers (verificados contra la fuente).
+  const F2_FINISHERS_W78 = {
+    "Pecho": { name: "Fire on the Floor · 3 rondas", rounds: 3,
+      protocol: "3 rondas sin descanso (drop set mecánico): DB Floor Flys (10RM) ⇒ DB Floor Press ⇒ DB Upper Chest Pullover, todas al fallo.",
+      steps: [
+        { name: "DB Floor Flys", detail: "10RM · al fallo", reps: 0 },
+        { name: "DB Floor Press", detail: "al fallo", reps: 0 },
+        { name: "DB Upper Chest Pullover", detail: "al fallo", reps: 0 }
+      ] },
+    "Tríceps": { name: "Tri-al by Fire · 3 rondas", rounds: 3,
+      protocol: "3 rondas sin descanso (drop set mecánico): Pancake Pushups ⇒ Diamond Cutter Pushups ⇒ Pounding Triceps Trunk Lifts, todas al fallo.",
+      steps: [
+        { name: "Pancake Pushups", detail: "al fallo", reps: 0 },
+        { name: "Diamond Cutter Pushups", detail: "al fallo", reps: 0 },
+        { name: "Pounding Triceps Trunk Lifts", detail: "al fallo", reps: 0 }
+      ] },
+    "Cuádriceps": { name: "Blast Off · 1 ronda", rounds: 1,
+      protocol: "1 Box Squat ⇒ 1 Box Jump. 2 Box Squats ⇒ 1 Box Jump. Seguís sumando 1 box squat por ronda (siempre 1 box jump) hasta que no puedas más.",
+      steps: [
+        { name: "Box Squats", detail: "escalera ascendente: 1, luego 2, luego 3… (+1 por ronda)", reps: 0 },
+        { name: "Box Jump", detail: "1 solo, después de cada tanda de box squats", reps: 1 }
+      ] },
+    "Isquios": { name: "3rd Degree Lunges · 2-3 rondas", rounds: 3,
+      protocol: "2-3 rondas sin descanso: DB Sprinter Lunges (12RM) ⇒ Sprinter Lunge Leaps ×12/pierna ⇒ Sprinter Lunges peso corporal ×12/pierna.",
+      steps: [
+        { name: "DB Sprinter Lunges", detail: "12RM · 12 reps", reps: 12 },
+        { name: "Sprinter Lunge Leaps", detail: "12 por pierna", reps: 12 },
+        { name: "Sprinter Lunges (peso corporal)", detail: "12 por pierna", reps: 12 }
+      ] },
+    "Hombros": { name: "Smoldering Shoulders · 3 rondas", rounds: 3,
+      protocol: "3 rondas: DB Bent Lateral Raises (12RM) ⇒ DB Side Laterals ⇒ DB Front Raises ⇒ DB Wide Arc Presses, todas al fallo. Peso por el fallo a 12 en la bent lateral raise.",
+      steps: [
+        { name: "DB Bent Lateral Raises", detail: "12RM · al fallo", reps: 0 },
+        { name: "DB Side Laterals", detail: "al fallo", reps: 0 },
+        { name: "DB Front Raises", detail: "al fallo", reps: 0 },
+        { name: "DB Wide Arc Presses", detail: "al fallo", reps: 0 }
+      ] },
+    "Trapecios": { name: "Entrapment · 1 ronda", rounds: 1,
+      protocol: "DB Leaning Shrugs en escalera 10→1, con Farmer's Carry ×30 pasos entre cada tanda. Arrancá con el peso de los High Pulls; si soltás las mancuernas: -10 lb y +1 rep al shrug siguiente. Terminás con la serie de 1.",
+      steps: [
+        { name: "DB Leaning Shrugs", detail: "escalera descendente 10, 9, 8… hasta 1", reps: 0 },
+        { name: "DB Farmer's Carry", detail: "30 pasos entre cada tanda de shrugs", reps: 0 }
+      ] },
+    "Espalda": { name: "Ladder 8 · 1 ronda", rounds: 1,
+      protocol: "DB Pullover (10RM) ×8 ⇒ 1 dominada · ×7 ⇒ 2 · … · ×1 ⇒ 8. Alterná pullover y dominadas hasta completar toda la escalera.",
+      steps: ladder8Steps() },
+    "Bíceps": { name: "Fire Pit · 1 ronda", rounds: 1,
+      protocol: "Sin descanso: Bicep Chin Hold 45 s ⇒ Inverted Chin Curl Hold 45 s · luego 30/30 · luego 20/20.",
+      steps: [
+        { name: "Bicep Chin Hold", detail: "hold 45 s", reps: 0 },
+        { name: "Inverted Chin Curl Hold", detail: "hold 45 s", reps: 0 },
+        { name: "Bicep Chin Hold", detail: "hold 30 s", reps: 0 },
+        { name: "Inverted Chin Curl Hold", detail: "hold 30 s", reps: 0 },
+        { name: "Bicep Chin Hold", detail: "hold 20 s", reps: 0 },
+        { name: "Inverted Chin Curl Hold", detail: "hold 20 s", reps: 0 }
+      ] }
+  };
+
   /* ======================================================================
-     Fase 3 — BACKFIRE (tempos)
+     Fase 3 — BACKFIRE TRAINING (tempos) + Athletic Pillars — Semanas 9-12
+     · Día concéntrico: 12RM, tempo 1/1/5, 50 reps por ejercicio.
+     · Día excéntrico:  6RM,  tempo 5/1/1, 25 reps por ejercicio.
+     · Completá TODAS las reps de un ejercicio antes de pasar al siguiente.
+     · "Cada vez que descansás": 60 s del estiramiento (conc) o la contracción
+       isométrica / flex (ecc) del músculo trabajado, y seguís.
+     4 bloques de movimientos; cada ejercicio con su estiramiento y su flex.
      ====================================================================== */
-  const F3_DAYS = {
-    mon: { title: "Empuje · Concéntrico",  block: "push",  mode: "conc" },
-    tue: { title: "Empuje · Excéntrico",   block: "push",  mode: "ecc" },
-    thu: { title: "Tirón · Concéntrico",   block: "pull",  mode: "conc" },
-    fri: { title: "Tirón · Excéntrico",    block: "pull",  mode: "ecc" },
-    sun: { title: "Empuje B · Concéntrico", block: "pushB", mode: "conc" }
+  const F3_BLOCKS = {
+    pushA: { label: "Empuje A", items: [
+      { name: "Press de Banca (DB)",                 stretch: "Band Chest Stretch",        flex: "Chest Flex" },
+      { name: "Fondos / Fondos lastrados",           stretch: "Band Triceps Stretch",      flex: "Triceps Flex" },
+      { name: "Thrusters (DB)",                      stretch: "Band Shoulder Stretch",     flex: "Shoulder Flex" },
+      { name: "Sentadilla Frontal",                  stretch: "Kneeling Recliner Stretch", flex: "Quad Flex" }
+    ] },
+    pushB: { label: "Empuje B", items: [
+      { name: "Floor Flys",                          stretch: "Band Chest Stretch",        flex: "Chest Flex" },
+      { name: "Elevaciones Laterales Cruzadas (DB)", stretch: "Band Shoulder Stretch",     flex: "Shoulder Flex" },
+      { name: "Peso Muerto con Barra",               stretch: "Kneeling Recliner Stretch", flex: "Quad Flex" },
+      { name: "Phelps Press (DB)",                   stretch: "Band Triceps Stretch",      flex: "Triceps Flex" }
+    ] },
+    pullA: { label: "Tirón A", items: [
+      { name: "Jalón Supino al Pecho",               stretch: "Lat Pulldown Stretch",                    flex: "Back Flex" },
+      { name: "Curl Inclinado Variable (DB)",        stretch: "Incline DB Bicep Stretch (peso liviano)", flex: "Biceps Flex" },
+      { name: "Encogimiento Sentado (DB)",           stretch: "Seated DB Shrug Stretch (peso liviano)",  flex: "Traps Flex" },
+      { name: "Physioball Glute-Ham Raise",          stretch: "Seated Hamstring Stretch (bilateral)",    flex: "Hamstrings Bridge Flex" }
+    ] },
+    pullB: { label: "Tirón B", items: [
+      { name: "Dominadas / Dominadas lastradas",     stretch: "Leaning Lat Stretch",                     flex: "Back Flex" },
+      { name: "Curl con Barra",                      stretch: "Reverse Standing Curl Stretch",           flex: "Biceps Flex" },
+      { name: "High Pull (DB)",                      stretch: "Seated Traps Stretch (30 s por lado)",    flex: "Traps Flex (30 s por lado)" },
+      { name: "Peso Muerto Piernas Rígidas (DB/BB)", stretch: "Standing Hamstring Stretch (bilateral)",  flex: "Hamstrings Bridge Flex" }
+    ] }
   };
-  const F3_SHORT = {
-    mon: "Empuje conc.", tue: "Empuje excén.", thu: "Tirón conc.", fri: "Tirón excén.", sun: "Empuje B"
+
+  // Los 8 "Athletic Pillar" finishers (con steps → corren en el runner).
+  const F3_PILLARS = {
+    "linear-loco": { name: "Athletic Pillar · Linear Locomotion", rounds: 1,
+      steps: [{ name: "Carrera 1 milla", detail: "ritmo sostenido", reps: 1 }] },
+    "nonlinear-loco": { name: "Athletic Pillar · Non-Linear Locomotion", rounds: 1,
+      steps: [{ name: "Agility Wheel", detail: "5 a 8 rondas", reps: 0 }] },
+    "crawl": { name: "Athletic Pillar · Crawl", rounds: 1,
+      steps: [
+        { name: "Alternating Alpine Climbers", detail: "5 por lado · lento y controlado", reps: 0 },
+        { name: "Side Kickthroughs", detail: "5 por lado · lento y controlado", reps: 0 },
+        { name: "Scorpion Crossovers", detail: "5 por lado · lento y controlado", reps: 0 },
+        { name: "Crab Stretch", detail: "5 por lado · lento y controlado", reps: 0 }
+      ] },
+    "jump": { name: "Athletic Pillar · Jump", rounds: 1,
+      steps: [
+        { name: "Soga · saltos a dos pies", detail: "", reps: 200 },
+        { name: "Soga · pierna derecha", detail: "", reps: 100 },
+        { name: "Soga · pierna izquierda", detail: "", reps: 100 },
+        { name: "Soga · rodillas altas", detail: "", reps: 100 },
+        { name: "Soga · saltos a dos pies", detail: "", reps: 200 }
+      ] },
+    "static-flex": { name: "Athletic Pillar · Static Flexibility", rounds: 1,
+      steps: [
+        { name: "Estiramiento estático de pecho", detail: "30 s por lado (pec mayor y pec menor)", reps: 0 },
+        { name: "Estiramiento estático de tríceps", detail: "30 s por lado", reps: 0 },
+        { name: "Estiramiento estático de hombro", detail: "30 s c/u (deltoide anterior, medio, posterior)", reps: 0 },
+        { name: "Estiramiento estático de cuádriceps", detail: "30 s por lado", reps: 0 }
+      ] },
+    "static-balance": { name: "Athletic Pillar · Static Balance", rounds: 1,
+      steps: [
+        { name: "Talón-punta · brazos afuera · ojos cerrados", detail: "60 s", reps: 0 },
+        { name: "Pierna derecha · ojos cerrados", detail: "60 s", reps: 0 },
+        { name: "Talón-punta · brazos arriba · ojos cerrados", detail: "60 s", reps: 0 },
+        { name: "Pierna izquierda · ojos cerrados", detail: "60 s", reps: 0 }
+      ] },
+    "dynamic-balance": { name: "Athletic Pillar · Dynamic Balance", rounds: 1,
+      steps: [
+        { name: "Pierna der · tuck jump en el lugar y frená", detail: "", reps: 10 },
+        { name: "Pierna izq · tuck jump en el lugar y frená", detail: "", reps: 10 },
+        { name: "Pierna der · salto lateral alterno y frená", detail: "5 a la derecha / 5 a la izquierda", reps: 10 },
+        { name: "Pierna izq · salto lateral alterno y frená", detail: "5 a la derecha / 5 a la izquierda", reps: 10 }
+      ] },
+    "dynamic-flex": { name: "Athletic Pillar · Dynamic Flexibility", rounds: 2,
+      note: "Repetí toda la secuencia con la otra pierna para la ronda final.",
+      steps: [
+        { name: "Rodilla al pecho de pie", detail: "", reps: 10 },
+        { name: "Cuádriceps de pie", detail: "", reps: 10 },
+        { name: "Piriforme de pie", detail: "", reps: 10 },
+        { name: "Balanceo de pierna de pie", detail: "", reps: 10 }
+      ] }
   };
-  const F3_MOVES = {
-    push:  ["Press de Banca (DB)", "Fondos (Dips)", "Thrusters (DB)", "Sentadilla Frontal"],
-    pull:  ["Jalón Supino al Pecho", "Curl Inclinado Variable (DB)", "Encogimiento Sentado (DB)", "Physioball Glute-Ham Raise"],
-    pushB: ["Floor Flys", "Elevaciones Laterales Cruzadas (DB)", "Peso Muerto con Barra", "Phelps Press (DB)"]
+
+  // Calendario real de la Fase 3 (cada semana distinta; los días que no figuran = descanso).
+  const F3_SCHEDULE = {
+    9: {
+      mon: { block: "pushA", mode: "conc", pillar: "linear-loco" },
+      tue: { block: "pushA", mode: "ecc",  pillar: "static-flex" },
+      thu: { block: "pullA", mode: "conc", pillar: "nonlinear-loco" },
+      fri: { block: "pullA", mode: "ecc",  pillar: "crawl" },
+      sun: { block: "pushB", mode: "conc", pillar: "jump" }
+    },
+    10: {
+      mon: { block: "pushB", mode: "ecc",  pillar: "static-balance" },
+      wed: { block: "pullB", mode: "conc", pillar: "dynamic-balance" },
+      thu: { block: "pullB", mode: "ecc",  pillar: "dynamic-flex" },
+      sat: { block: "pushA", mode: "conc", pillar: "linear-loco" },
+      sun: { block: "pushA", mode: "ecc",  pillar: "static-flex" }
+    },
+    11: {
+      tue: { block: "pullA", mode: "conc", pillar: "nonlinear-loco" },
+      wed: { block: "pullA", mode: "ecc",  pillar: "crawl" },
+      fri: { block: "pushB", mode: "conc", pillar: "jump" },
+      sat: { block: "pushB", mode: "ecc",  pillar: "static-balance" }
+    },
+    12: {
+      mon: { block: "pullB", mode: "conc", pillar: "dynamic-balance" },
+      tue: { block: "pullB", mode: "ecc",  pillar: "dynamic-flex" }
+    }
   };
-  const F3_FINISHERS_W9 = {
-    mon: "1 milla de carrera",
-    tue: "Circuito de flexibilidad estática",
-    thu: "Agility Wheel · 5-8 rondas",
-    fri: "Crawl Circuit — Alpine Climbers · Kickthroughs · Scorpions · Crab Stretch",
-    sun: "Jump Rope · 800 saltos"
-  };
-  const F3_PILLARS = "Athletic Pillars — Static Balance · Dynamic Balance · Dynamic Flexibility · Locomotion";
 
   /* ======================================================================
      Entrada en calor / rehabilitación — bloque previo por día
@@ -245,6 +452,7 @@
   function warmupKeyFor(sess) {
     if (!sess) return null;
     if (sess.isChallenge) return "d5";
+    if (sess.phase === 3) return /Empuje/.test(sess.title || "") ? "d1" : "d3";
     return { mon: "d1", tue: "d2", thu: "d3", fri: "d4", sun: "d1" }[sess.day] || null;
   }
 
@@ -252,16 +460,17 @@
      Calendario — días / retos / fases
      ====================================================================== */
   const SAT_WOD = {
-    1: "ax-burn-ladder", 2: "ax-diabol-x", 3: "ax-fire-ice", 4: "ax-you-in-30-push",
+    1: "ax-burn-ladder", 2: "ax-diabol-x", 3: "ax-fire-ice", 4: "ax-you-in-30",
     5: "ax-bump-run", 6: "ax-sprint-ladder", 7: "ax-tracknophobia", 8: "ax-hot-plate"
   };
   const DAY_ORDER = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
   const DAY_LABEL = { mon: "Lun", tue: "Mar", wed: "Mié", thu: "Jue", fri: "Vie", sat: "Sáb", sun: "Dom" };
   const DAY_FULL  = { mon: "Lunes", tue: "Martes", wed: "Miércoles", thu: "Jueves", fri: "Viernes", sat: "Sábado", sun: "Domingo" };
 
-  function phaseOf(week) { if (week <= 4) return 1; if (week <= 8) return 2; if (week <= 11) return 3; return 12; }
+  function phaseOf(week) { if (week <= 4) return 1; if (week <= 8) return 2; return 3; }
   function phaseTag(week) {
-    return { 1: "Fase 1 · Ignition", 2: "Fase 2 · AX-RSON", 3: "Fase 3 · Backfire", 12: "Semana de cierre" }[phaseOf(week)];
+    if (week === 12) return "Fase 3 · Backfire + cierre";
+    return { 1: "Fase 1 · Ignition", 2: "Fase 2 · AX-RSON", 3: "Fase 3 · Backfire" }[phaseOf(week)];
   }
   function liftById(id) { return LIFTS.find((l) => l.id === id); }
   function slug(s) {
@@ -316,20 +525,26 @@
     const groups = [];
     const finishers = [];
 
+    // El ejercicio del drop→iso rota por semana dentro de la superserie:
+    //   sem 5/7 (impares) → A2 (2º movimiento) · sem 6/8 (pares) → A1 (1º).
+    const dropIdx = week % 2 === 0 ? 0 : 1;
+
     dd.muscles.forEach((m) => {
       const x = F2_MUSCLES[m];
       const base = week + "-" + day + "-" + slug(m);
+      const dropName = x.superset[dropIdx];
       groups.push({
-        label: "Superserie · " + m, note: "6-9RM cada uno · 2 min descanso",
+        label: "Superserie · " + m,
+        note: "6-9RM cada uno · 2 min descanso" + (x.ssNote ? " · " + x.ssNote : ""),
         exercises: x.superset.map((n, i) => ({
           key: base + "-ss" + i, movementSlug: slug(n), name: n,
           sets: 2, restSec: 120, restAfterSec: 120, loadHint: "6-9RM"
         }))
       });
       groups.push({
-        label: "Drop → iso · " + m, note: "10RM ×8 reps → hold isométrico al fallo · 90 s",
+        label: "Drop → iso · " + m, note: dropName + " · 10RM ×8 reps → hold isométrico al fallo · 90 s",
         exercises: [{
-          key: base + "-drop", movementSlug: slug(x.dropIso), name: x.dropIso,
+          key: base + "-drop", movementSlug: slug(dropName), name: dropName,
           sets: 3, reps: 8, restSec: 90, restAfterSec: 120, loadHint: "10RM → hold"
         }]
       });
@@ -340,12 +555,13 @@
           sets: 5, restSec: 60, restAfterSec: 150, loadHint: "6-9RM"
         }]
       });
-      if (week <= 6) {
-        finishers.push({ key: slug(m) + "-fin", kind: "note", name: x.finisher.name, muscle: m, protocol: x.finisher.protocol });
-      } else {
+      const fin = week <= 6 ? x.finisher : F2_FINISHERS_W78[m];
+      if (fin) {
         finishers.push({
-          key: slug(m) + "-fin", kind: "note", name: "Finisher de " + m + " · Semana " + week, muscle: m,
-          protocol: "El handoff no detalla los finishers de las semanas 7-8. Elegí el del PDF (Smoldering Shoulders, Entrapment, Ladder 8, Fire Pit, Fire on the Floor, Tri-al by Fire, Blast Off, 3rd Degree Lunges…)."
+          key: slug(m) + "-fin", kind: "note", name: fin.name, muscle: m,
+          protocol: fin.protocol,
+          rounds: fin.rounds || 1,
+          steps: fin.steps || null
         });
       }
     });
@@ -360,35 +576,44 @@
     };
   }
 
-  // Fase 3 — BACKFIRE (tempos)
+  // Fase 3 — BACKFIRE (tempos) + Athletic Pillar
   function buildF3Session(week, day) {
-    const d = F3_DAYS[day];
-    if (!d) return null;
-    const conc = d.mode === "conc";
+    const sc = F3_SCHEDULE[week] && F3_SCHEDULE[week][day];
+    if (!sc) return null;
+    const blk = F3_BLOCKS[sc.block];
+    const conc = sc.mode === "conc";
     const target = conc ? 50 : 25;
     const tempo = conc ? "1 / 1 / 5" : "5 / 1 / 1";
     const loadHint = conc ? "12RM" : "6RM";
-    const restNote = conc ? "60 s de estiramiento" : "60 s de flexión (flexing)";
-    const moves = F3_MOVES[d.block];
+    const modeLabel = conc ? "Concéntrico" : "Excéntrico";
 
-    const exercises = moves.map((n, i) => ({
-      key: week + "-" + day + "-" + i, movementSlug: slug(n), name: n,
-      targetReps: target, tempo: tempo, loadHint: loadHint, restSec: 60, restAfterSec: 60, restNote: restNote
+    const exercises = blk.items.map((it, i) => ({
+      key: week + "-" + day + "-" + i, movementSlug: slug(it.name), name: it.name,
+      targetReps: target, tempo: tempo, loadHint: loadHint,
+      restSec: 60, restAfterSec: 60,
+      restNote: "60 s de " + (conc ? it.stretch : it.flex) + ", y seguí"
     }));
 
-    const finText = week === 9 ? F3_FINISHERS_W9[day] : F3_PILLARS;
+    const pillar = F3_PILLARS[sc.pillar];
 
     return {
       id: week + "-" + day, week: week, day: day, phase: 3,
-      title: d.title, titleShort: F3_SHORT[day],
+      title: blk.label + " · " + modeLabel,
+      titleShort: blk.label + " " + (conc ? "conc." : "excén."),
       method: "Backfire · tempo " + tempo,
-      note: loadHint + " · tempo " + tempo + " · " + target + " reps por ejercicio · descanso: " + restNote + ".",
+      note: loadHint + " · tempo " + tempo + " · " + target + " reps por ejercicio. Completá TODAS las reps de un ejercicio antes de pasar al siguiente. Cada vez que descansás: 60 s del " +
+        (conc ? "estiramiento" : "flex/contracción isométrica") + " del músculo trabajado, y seguís repitiendo.",
       groups: [{
-        label: (conc ? "Concéntrico" : "Excéntrico") + " · " + moves.length + " ejercicios",
-        note: target + " reps c/u",
+        label: modeLabel + " · " + blk.items.length + " ejercicios",
+        note: target + " reps c/u · tempo " + tempo,
         exercises: exercises
       }],
-      finishers: [{ key: week + "-" + day + "-fin", kind: "note", name: "Finisher", protocol: finText }]
+      finishers: [{
+        key: week + "-" + day + "-pillar", kind: "note", muscle: "",
+        name: pillar.name, rounds: pillar.rounds || 1,
+        protocol: pillar.note || pillar.steps.map((s) => s.name).join(" · "),
+        steps: pillar.steps
+      }]
     };
   }
 
@@ -404,14 +629,13 @@
   function weekPlan(week) {
     const ph = phaseOf(week);
     return DAY_ORDER.map((day) => {
-      if (ph === 12) {
-        if (day === "thu") return { day: day, kind: "challenge", wodId: "ax-firemans-carry", label: "Reto final" };
-        if (day === "fri") return { day: day, kind: "challenge", wodId: "ax-towering-inferno", label: "Reto final" };
-        return { day: day, kind: "off", label: "Descanso" };
-      }
+      // Semana 12: jue/vie = retos de cierre.
+      if (week === 12 && day === "thu") return { day: day, kind: "challenge", wodId: "ax-firemans-carry", label: "Reto final" };
+      if (week === 12 && day === "fri") return { day: day, kind: "challenge", wodId: "ax-towering-inferno", label: "Reto final" };
+
       if (ph === 3) {
-        if (day === "wed" || day === "sat") return { day: day, kind: "off", label: "Descanso" };
         const s = buildF3Session(week, day);
+        if (!s) return { day: day, kind: "off", label: "Descanso" };
         return { day: day, kind: "lift", label: s.title, labelShort: s.titleShort, sessionId: s.id };
       }
       if (day === "wed" || day === "sun") return { day: day, kind: "off", label: "Descanso" };
@@ -1246,16 +1470,29 @@
 
       // kind "note"
       const isDone = rec && rec.done;
+      const stepsList = f.steps && f.steps.length
+        ? '<ol class="pg-fin-steps">' +
+          f.steps.map((s) =>
+            "<li>" + esc(s.name) +
+            (s.reps > 1 ? ' <b>×' + s.reps + "</b>" : (s.reps === 1 ? " <b>×1</b>" : "")) +
+            (s.detail ? ' <span>' + esc(s.detail) + "</span>" : "") + "</li>"
+          ).join("") +
+          "</ol>" +
+          (f.rounds > 1 ? '<div class="pg-fin-rounds">× ' + f.rounds + " rondas</div>" : "")
+        : "";
       return (
         '<div class="pg-fin' + (isDone ? " is-complete" : "") + '">' +
         '<div class="pg-ex-head"><span class="pg-ex-tag">Finisher</span>' +
         (f.muscle ? '<span class="pg-fin-muscle">' + esc(f.muscle) + "</span>" : "") + "</div>" +
         '<div class="pg-fin-move">' + esc(f.name) + "</div>" +
         '<p class="pg-fin-protocol">' + esc(f.protocol) + "</p>" +
+        stepsList +
         '<div class="pg-fin-row">' +
+        (f.steps && f.steps.length
+          ? '<button class="btn btn-primary btn-sm" data-finrun="' + f.key + '"><span data-icon="play"></span> Empezar finisher</button>'
+          : '<button class="btn btn-ghost btn-sm" id="pgOpenTimer"><span data-icon="timer"></span> Cronómetro</button>') +
         '<button class="btn ' + (isDone ? "btn-success" : "btn-ghost") + ' btn-sm" data-fintoggle="' + f.key + '">' +
         '<span data-icon="check"></span> ' + (isDone ? "Hecho" : "Marcar hecho") + "</button>" +
-        '<button class="btn btn-ghost btn-sm" id="pgOpenTimer"><span data-icon="timer"></span> Cronómetro</button>' +
         "</div></div>"
       );
     }).join("");
@@ -1525,6 +1762,31 @@
     } else { toast("Reto no disponible."); }
   }
 
+  // Arma un WOD al vuelo a partir de un finisher con `steps` y lo abre en el runner.
+  function finisherWod(f) {
+    const rounds = f.rounds || 1;
+    return {
+      id: "f2-fin-" + slug(f.name),
+      name: f.name,
+      category: "inferno",
+      type: rounds > 1 ? "rounds" : "for-time",
+      timeCap: null,
+      description: f.protocol || "",
+      blocks: [rounds > 1
+        ? { kind: "rounds", rounds: rounds, items: f.steps }
+        : { kind: "single", items: f.steps }]
+    };
+  }
+  function startFinisher(key) {
+    const f = finisherDef(key);
+    if (!f || !f.steps || !f.steps.length) { toast("Este finisher no tiene pasos cargados."); return; }
+    if (window.AppGym && window.AppGym.startWod) {
+      startSessionTimer();
+      toast("Al terminar, marcá el finisher como hecho.");
+      window.AppGym.startWod(finisherWod(f));
+    } else { toast("Runner no disponible."); }
+  }
+
   function toggleFinisher(key) {
     const lg = sessionLog();
     lg.finishers[key] = Object.assign({}, lg.finishers[key]);
@@ -1650,6 +1912,8 @@
     }
     const finToggle = t.closest("[data-fintoggle]");
     if (finToggle) { toggleFinisher(finToggle.dataset.fintoggle); return; }
+    const finRun = t.closest("[data-finrun]");
+    if (finRun) { startFinisher(finRun.dataset.finrun); return; }
   }
 
   /* ======================================================================

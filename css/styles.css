@@ -1452,6 +1452,11 @@ body.light .tab.is-active {
 .pg-fin-row .field { margin-bottom: 0; max-width: 120px; }
 .pg-fin-goal { font-size: 0.82rem; color: var(--text); background: var(--accent-soft); border-radius: 8px; padding: 6px 10px; }
 .pg-fin-goal strong { color: var(--accent); }
+.pg-fin-steps { margin: 2px 0 0; padding-left: 20px; display: flex; flex-direction: column; gap: 3px; }
+.pg-fin-steps li { font-size: 0.82rem; color: var(--text); line-height: 1.4; }
+.pg-fin-steps li b { color: var(--accent); font-weight: 700; }
+.pg-fin-steps li span { color: var(--text-muted); }
+.pg-fin-rounds { font-size: 0.78rem; font-weight: 700; color: var(--accent); }
 
 .pg-fin .pg-ring { margin: 4px 0; }
 .pg-fin .pg-link { align-self: flex-start; font-size: 0.78rem; }

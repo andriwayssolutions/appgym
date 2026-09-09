@@ -374,7 +374,18 @@
       return { name: wod.name, type: "amrap", timeCap: wod.timeCap, description: wod.description || "", circuit: (block ? block.items : []).map(normItem) };
     }
     if (wod.type === "emom") {
-      const block = wod.blocks.find((b) => b.kind === "emom");
+      const emomBlocks = wod.blocks.filter((b) => b.kind === "emom");
+      if (wod.perMinute) {
+        // EMOM "una tarea por minuto": cada bloque emom es su propio EMOM de N minutos.
+        return {
+          name: wod.name, type: "emom", timeCap: wod.timeCap, description: wod.description || "",
+          perMinute: true, restBetweenSec: wod.restBetweenSec || 90,
+          segments: emomBlocks.map((b, i) => ({
+            label: b.label || ("Bloque " + (i + 1)), circuit: b.items.map(normItem)
+          }))
+        };
+      }
+      const block = emomBlocks[0];
       return { name: wod.name, type: "emom", timeCap: wod.timeCap, description: wod.description || "", circuit: (block ? block.items : []).map(normItem) };
     }
     return { name: wod.name, type: "linear", steps: expandWod(wod), timeCap: wod.timeCap, description: wod.description || "" };
@@ -404,7 +415,10 @@
   }
 
   function summaryOf(resolved) {
-    let stepsCount = resolved.steps ? resolved.steps.length : resolved.circuit.length;
+    let stepsCount;
+    if (resolved.steps) stepsCount = resolved.steps.length;
+    else if (resolved.segments) stepsCount = resolved.segments.reduce((n, s) => n + s.circuit.length, 0);
+    else stepsCount = (resolved.circuit || []).length;
     let timeCapText = resolved.timeCap ? Math.round(resolved.timeCap / 60) + " min" : null;
     return { stepsCount, timeCapText };
   }
@@ -510,6 +524,12 @@
     if (detail.resolved.type === "amrap") {
       html = '<div class="rd-note">AMRAP — repite este circuito hasta agotar el tiempo:</div>';
       (detail.resolved.circuit || []).forEach((s, i) => { html += stepItemHtml(i + 1, s.title, s.detail, s.reps); });
+    } else if (detail.resolved.type === "emom" && detail.resolved.segments) {
+      let n = 0;
+      detail.resolved.segments.forEach((seg) => {
+        html += '<div class="rd-note">Bloque ' + escapeHtml(seg.label) + " — EMOM " + seg.circuit.length + " min (un ejercicio por minuto):</div>";
+        seg.circuit.forEach((s) => { n++; html += stepItemHtml(n, s.title, s.detail, s.reps); });
+      });
     } else if (detail.resolved.type === "emom") {
       html = '<div class="rd-note">EMOM — cada minuto realiza:</div>';
       (detail.resolved.circuit || []).forEach((s, i) => { html += stepItemHtml(i + 1, s.title, s.detail, s.reps); });
@@ -639,6 +659,16 @@
       circuit: resolved.circuit || [],
       timeCap: resolved.timeCap || 0,
       mode: mode,
+      // EMOM "una tarea por minuto" en bloques (reto You in 30):
+      perMinute: !!resolved.perMinute,
+      segments: resolved.segments || null,
+      segIndex: 0,
+      restBetweenSec: resolved.restBetweenSec || 90,
+      minuteMarked: false,   // ¿el minuto en curso se completó?
+      blockSuccess: 0,       // minutos logrados en el bloque actual
+      successMinutes: 0,     // minutos logrados en total (puntaje)
+      blockScores: [],       // [{ label, minutes }] de bloques terminados
+      interBlock: false,     // en pantalla de descanso entre bloques
       timerStarted: false,
       infoOpen: false,
       stepIndex: 0,
@@ -661,6 +691,16 @@
       onFinish: runnerTimerFinish
     });
 
+    $("#runner").hidden = false;
+    $("#runnerWodName").textContent = runner.name;
+    $("#runnerOverview").hidden = mode !== "linear";
+
+    // Reto "You in 30": EMOM por bloques. Arranca el primer bloque y listo.
+    if (runner.perMinute && runner.segments) {
+      startBlock(0);
+      return;
+    }
+
     if (runner.mode === "amrap") {
       runnerTimer.configure({ mode: "countdown", durationSec: runner.timeCap });
     } else if (runner.mode === "emom") {
@@ -669,9 +709,6 @@
       runnerTimer.configure({ mode: "stopwatch" });
     }
 
-    $("#runner").hidden = false;
-    $("#runnerWodName").textContent = runner.name;
-    $("#runnerOverview").hidden = mode !== "linear";
     // AMRAP/EMOM son formatos cronometrados: arrancan solos.
     // For-time / rondas: el reloj espera a la primera interacción (o al toque
     // en el cronómetro) para que puedas leer las instrucciones sin presión.
@@ -689,6 +726,88 @@
       hydrateIcons($("#runnerBody"));
       updateRunnerStep();
     }
+  }
+
+  /* ---- Reto "You in 30": EMOM en bloques de N minutos ---- */
+  // Arranca el bloque i: reconfigura el cronómetro EMOM y muestra el 1er ejercicio.
+  function startBlock(i) {
+    const seg = runner.segments[i];
+    if (!seg) { finishRunner(); return; }
+    runner.segIndex = i;
+    runner.circuit = seg.circuit;
+    runner.stepIndex = 0;
+    runner.currentReps = 0;
+    runner.currentRound = 1;
+    runner.minuteMarked = false;
+    runner.blockSuccess = 0;
+    runner.waiting = false;
+    runner.interBlock = false;
+    runner.view = "detail";
+    runner.timerStarted = true;
+
+    $("#runnerBody").innerHTML = runnerBodyTemplate;
+    // Botón extra: cortar el bloque cuando no llegás a las reps.
+    const side = $("#runnerBody .runner-side");
+    if (side) {
+      const b = document.createElement("button");
+      b.className = "btn btn-ghost btn-block";
+      b.id = "runnerEndBlock";
+      b.style.marginTop = "8px";
+      b.innerHTML = '<span data-icon="close"></span> No llegué — cortar bloque';
+      side.appendChild(b);
+    }
+    hydrateIcons($("#runnerBody"));
+
+    runnerTimer.configure({ mode: "emom", intervalSec: 60, durationSec: seg.circuit.length * 60 });
+    runnerTimer.start();
+    updateRunnerTimerDisplay();
+    updateRunnerStep();
+  }
+
+  // Evalúa el minuto que termina: cuenta como logrado si marcaste "completé"
+  // o si el contador ya llegó a las reps objetivo.
+  function evalMinute() {
+    const step = runner.circuit[runner.stepIndex];
+    const target = step ? (step.reps || 0) : 0;
+    const ok = runner.minuteMarked || (target > 0 && runner.currentReps >= target);
+    if (ok) { runner.blockSuccess++; runner.successMinutes++; }
+    return ok;
+  }
+
+  // Termina el bloque actual: guarda el score y pasa al descanso o al resumen.
+  function endBlock(reason) {
+    if (runnerTimer) { runnerTimer.pause(); runnerTimer._clearLoop(); }
+    runner.blockScores.push({ label: runner.segments[runner.segIndex].label, minutes: runner.blockSuccess });
+    if (state.sound) sound(reason === "fail" ? "end" : "success");
+    if (runner.segIndex >= runner.segments.length - 1) { finishRunner(); return; }
+    showInterBlock();
+  }
+
+  // Pantalla de descanso entre bloques (cuenta atrás + botón para arrancar ya).
+  function showInterBlock() {
+    runner.interBlock = true;
+    runner.waiting = false;
+    const prevSeg = runner.segments[runner.segIndex];
+    const nextSeg = runner.segments[runner.segIndex + 1];
+    const prev = runner.blockScores[runner.blockScores.length - 1];
+    $("#runnerRoundBadge").hidden = true;
+    $("#runnerProgressLabel").textContent = "Descanso entre bloques";
+    $("#runnerProgressFill").style.width = "100%";
+    $("#runnerBody").innerHTML =
+      '<div class="runner-finish">' +
+      "<h2>Bloque " + escapeHtml(prevSeg.label) + " terminado</h2>" +
+      '<div class="runner-stat">' + prev.minutes + " / " + prevSeg.circuit.length + " minutos</div>" +
+      '<div class="runner-stat">Acumulado: ' + runner.successMinutes + " / 30</div>" +
+      "<p>Ahora viene <strong>" + escapeHtml(nextSeg.label) + "</strong> — " + nextSeg.circuit.length + " minutos</p>" +
+      '<div class="runner-stat" id="runnerRestNum">' + window.fmtTime(runner.restBetweenSec * 1000) + "</div>" +
+      '<p style="opacity:.7">Descanso para prepararte</p>' +
+      '<div style="margin-top:18px"><button class="btn btn-primary" id="runnerNextBlock">' +
+      '<span data-icon="play"></span> Empezar ' + escapeHtml(nextSeg.label) + " ahora</button></div>" +
+      "</div>";
+    hydrateIcons($("#runnerBody"));
+    runnerTimer.configure({ mode: "countdown", durationSec: runner.restBetweenSec });
+    runnerTimer.start();
+    updateRunnerTimerDisplay();
   }
 
   // Arranca el cronómetro del runner la primera vez que hace falta.
@@ -824,10 +943,29 @@
       $("#runnerTimer").textContent = st.display;
       $("#runnerTimer").classList.toggle("is-paused", !st.running && !st.finished);
     }
-    if (st.round) runner.currentRound = st.round;
-    if (st.finished && runner.mode === "amrap") {
-      finishRunner();
+    // Reto "You in 30": descanso entre bloques → sólo refresca la cuenta atrás.
+    if (runner.interBlock) {
+      const el = $("#runnerRestNum");
+      if (el) el.textContent = st.display;
+      return;
     }
+    if (st.round) {
+      // EMOM "una tarea por minuto": al cambiar de minuto, evalúa el minuto que
+      // termina y avanza (o corta el bloque si no se completó).
+      if (runner.mode === "emom" && runner.perMinute && st.round !== runner.currentRound) {
+        const ok = evalMinute();
+        runner.currentRound = st.round;
+        if (!ok) { endBlock("fail"); return; }
+        runner.stepIndex = Math.min(st.round - 1, runner.circuit.length - 1);
+        runner.currentReps = 0;
+        runner.minuteMarked = false;
+        runner.waiting = false;
+        updateRunnerStep();
+      } else {
+        runner.currentRound = st.round;
+      }
+    }
+    if (st.finished && runner.mode === "amrap") finishRunner();
   }
 
   function runnerBeep(kind) {
@@ -835,8 +973,9 @@
     if (kind === "tick") { if (state.sound) sound("tick"); }
     else if (kind === "end") {
       if (state.sound) sound("end");
-      // En EMOM, al cambiar de minuto se reinicia el circuito
-      if (runner.mode === "emom" && runner.waiting) {
+      // En EMOM clásico, al cambiar de minuto se reinicia el circuito.
+      // (El "una tarea por minuto" lo maneja runnerTick.)
+      if (runner.mode === "emom" && runner.waiting && !runner.perMinute) {
         runner.waiting = false;
         runner.stepIndex = 0;
         runner.currentReps = 0;
@@ -846,7 +985,14 @@
   }
 
   function runnerTimerFinish() {
-    if (runner && runner.mode === "amrap") finishRunner();
+    if (!runner) return;
+    if (runner.mode === "amrap") { finishRunner(); return; }
+    if (runner.perMinute) {
+      if (runner.interBlock) { startBlock(runner.segIndex + 1); return; }
+      // El bloque llegó a su último minuto: evaluá ese minuto y cerrá el bloque.
+      evalMinute();
+      endBlock("complete");
+    }
   }
 
   function currentRunnerStep() {
@@ -898,11 +1044,18 @@
       const round = runner.currentRound || 1;
       const total = runner.circuit.length;
       $("#runnerRoundBadge").hidden = false;
-      $("#runnerRoundBadge").textContent = "Minuto " + round;
-      if (runner.waiting) {
-        $("#runnerProgressLabel").textContent = "Espera el siguiente minuto…";
-        $("#runnerProgressFill").style.width = "100%";
+      if (runner.perMinute) {
+        const seg = runner.segments[runner.segIndex];
+        $("#runnerRoundBadge").textContent = seg.label + " · Min " + round + " / " + total;
+        if (runner.waiting) {
+          $("#runnerProgressLabel").textContent = "Minuto completo — esperá el próximo";
+        } else {
+          $("#runnerProgressLabel").textContent = "Bloque " + (runner.segIndex + 1) + "/" + runner.segments.length +
+            " · minuto " + round + " · puntaje " + runner.successMinutes + "/30";
+        }
+        $("#runnerProgressFill").style.width = ((round / total) * 100) + "%";
       } else {
+        $("#runnerRoundBadge").textContent = "Minuto " + round;
         $("#runnerProgressLabel").textContent = "Minuto " + round + " · Paso " + (runner.stepIndex + 1) + " de " + total;
         $("#runnerProgressFill").style.width = (((runner.stepIndex) / total) * 100) + "%";
       }
@@ -940,6 +1093,8 @@
       $("#runnerNextLabel").textContent = runner.stepIndex >= runner.steps.length - 1 ? "Ver resumen" : "Siguiente paso";
     } else if (runner.mode === "amrap") {
       $("#runnerNextLabel").textContent = runner.stepIndex >= runner.circuit.length - 1 ? "Completar ronda" : "Siguiente paso";
+    } else if (runner.perMinute) {
+      $("#runnerNextLabel").textContent = "Completé el minuto";
     } else {
       $("#runnerNextLabel").textContent = runner.stepIndex >= runner.circuit.length - 1 ? "Terminar minuto" : "Siguiente paso";
     }
@@ -983,6 +1138,14 @@
         runner.stepIndex = 0;
       }
     } else if (runner.mode === "emom") {
+      if (runner.perMinute) {
+        // Una tarea por minuto: "Completé" = minuto logrado, a esperar el próximo.
+        runner.minuteMarked = true;
+        runner.waiting = true;
+        if (state.sound) sound("tap");
+        updateRunnerStep();
+        return;
+      }
       runner.stepIndex++;
       if (runner.stepIndex >= runner.circuit.length) {
         runner.waiting = true;
@@ -995,6 +1158,7 @@
 
   function runnerPrev() {
     if (!runner || runner.completed || runner.view === "overview") return;
+    if (runner.mode === "emom" && runner.perMinute) return; // el minuto manda; no se retrocede
     if (runner.stepIndex > 0) {
       runner.stepIndex--;
       runner.currentReps = runner.mode === "linear" ? (runner.repsByIndex[runner.stepIndex] || 0) : 0;
@@ -1021,7 +1185,17 @@
       const partial = runner.stepIndex > 0 ? " + " + runner.stepIndex + " pasos" : "";
       extra = '<div class="runner-stat">' + runner.roundsCompleted + " rondas" + partial + "</div>";
     } else if (runner.mode === "emom") {
-      extra = '<div class="runner-stat">' + (runner.currentRound || 1) + " minutos</div>";
+      if (runner.perMinute) {
+        const mins = runner.successMinutes;
+        const tier = mins >= 30 ? "ATHLEAN XTREME" : mins >= 26 ? "ATHLEAN ELITE"
+          : mins >= 20 ? "ATHLEAN PRO" : mins >= 15 ? "ATHLEAN SOLID" : "ATHLEAN BASIX";
+        const breakdown = runner.blockScores.map((b) => escapeHtml(b.label) + ": " + b.minutes).join("  ·  ");
+        extra = '<div class="runner-stat">' + mins + " / 30 minutos</div>" +
+          '<div class="runner-stat">' + tier + "</div>" +
+          (breakdown ? '<p style="opacity:.8;font-size:.9em;margin:6px 0 0">' + breakdown + "</p>" : "");
+      } else {
+        extra = '<div class="runner-stat">' + (runner.currentRound || 1) + " minutos</div>";
+      }
     } else if (runner.mode === "linear") {
       const doneCount = runner.steps.filter((s, i) => stepDone(s, runner.repsByIndex[i] || 0)).length;
       extra = '<div class="runner-stat">' + doneCount + " / " + runner.steps.length + " ejercicios completos</div>";
@@ -1363,6 +1537,12 @@
         case "runnerMinus": runnerMinus(); break;
         case "runnerUndo": runnerPrev(); break;
         case "runnerNext": runnerNext(); break;
+        case "runnerEndBlock":
+          if (runner && runner.perMinute && !runner.interBlock && !runner.completed) { evalMinute(); endBlock("fail"); }
+          break;
+        case "runnerNextBlock":
+          if (runner && runner.perMinute && runner.interBlock) startBlock(runner.segIndex + 1);
+          break;
         case "runnerClose": exitRunner(); break;
         case "runnerRepeat": startRunner(resolveCurrentAgain()); break;
         case "runnerTimer": ensureAudio(); toggleRunnerTimer(); break;
@@ -1445,11 +1625,20 @@
     startRunner(resolved);
   }
 
+  // Igual que startWodById pero con un objeto WOD armado al vuelo (finishers de Fase 2).
+  function startWod(wod) {
+    if (!wod || !wod.blocks) { toast("Rutina inválida"); return; }
+    const resolved = resolvePreset(wod);
+    resolved._resolved = resolved;
+    startRunner(resolved);
+  }
+
   window.AppGym = {
     hydrateIcons: hydrateIcons,
     toast: toast,
     sound: sound,
-    startWodById: startWodById
+    startWodById: startWodById,
+    startWod: startWod
   };
 
   document.addEventListener("DOMContentLoaded", init);
