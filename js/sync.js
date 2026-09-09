@@ -302,7 +302,7 @@
       finishers: Object.assign({}, s.finishers, p.finishers),
       warmup: Object.assign({}, s.warmup, p.warmup),
       note: (p.note && String(p.note).trim()) ? p.note : (s.note || ""),
-      timer: mergeTimer(a.timer, b.timer)
+      timer: mergeTimer(a.timer, b.timer, remoteNewer)
     };
     var total = Math.max(a.totalSec || 0, b.totalSec || 0);
     if (total) entry.totalSec = total;
@@ -327,12 +327,16 @@
     return (list || []).reduce(function (m, x) { return Math.max(m, (x && x.ts) || 0); }, 0);
   }
 
-  function mergeTimer(a, b) {
+  // Cronómetro de la sesión ({accum, startedAt}). Antes "el que corre gana", lo
+  // que revertía una pausa: si la nube tenía un startedAt viejo, el reloj local
+  // pausado se reanudaba solo. Ahora manda el lado más nuevo a nivel de fila
+  // (pausar hace save() → bumpea meta.localMutatedAt, así que el local gana
+  // recién pausado). Si son iguales, el que tenga más tiempo acumulado.
+  function mergeTimer(a, b, remoteNewer) {
     if (!a) return b || undefined;
     if (!b) return a || undefined;
-    if (a.startedAt && !b.startedAt) return a; // uno está corriendo → gana
-    if (b.startedAt && !a.startedAt) return b;
-    return (a.accum || 0) >= (b.accum || 0) ? a : b;
+    if (eq(a, b)) return a;
+    return remoteNewer ? b : a;
   }
 
   /* -------------------------------------------------------------- UI */

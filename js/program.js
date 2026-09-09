@@ -1968,12 +1968,19 @@
     importState: function (incoming) {
       if (!incoming || typeof incoming !== "object") return;
       var base = JSON.parse(JSON.stringify(DEFAULTS));
-      st = Object.assign(base, incoming, {
+      var next = Object.assign(base, incoming, {
         rms: Object.assign({}, incoming.rms),
         done: Object.assign({}, incoming.done),
         doneAt: Object.assign({}, incoming.doneAt),
         log: Object.assign({}, incoming.log)
       });
+      // Si hay una sesión abierta, la nube NO pisa el día en curso: mantenemos
+      // el log local de esa clave (cronómetro, series y finishers recién
+      // cargados). La sync vuelve a gestionar ese día al salir de la sesión.
+      if (screen === "session" && sessionRef && sessionRef.id && st.log[sessionRef.id]) {
+        next.log[sessionRef.id] = st.log[sessionRef.id];
+      }
+      st = next;
       save();
       // No re-renderizamos en medio de una sesión activa: el estado queda
       // actualizado y la vista lo toma al salir. En cualquier otra pantalla,
