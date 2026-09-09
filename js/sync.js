@@ -247,23 +247,37 @@
     a = a || {}; b = b || {};
     var s = remoteNewer ? b : a;
     var o = remoteNewer ? a : b;
+    var d = mergeDone(a.done, a.doneAt, b.done, b.doneAt);
     return {
       unit: s.unit || o.unit || "kg",
       startDate: s.startDate || o.startDate || null,
       rms: Object.assign({}, o.rms, s.rms),
-      done: mergeDone(a.done, b.done),
+      done: d.done,
+      doneAt: d.doneAt,
       log: mergeLog(a.log, b.log, remoteNewer)
     };
   }
 
-  // "done" es pegajoso: si un día quedó hecho en cualquier dispositivo, se
-  // mantiene hecho. Prioriza no perder progreso.
-  function mergeDone(a, b) {
-    var out = {};
-    [a || {}, b || {}].forEach(function (src) {
-      Object.keys(src).forEach(function (k) { if (src[k]) out[k] = true; });
+  // "done" se resuelve por día con last-write-wins usando doneAt (marca de
+  // tiempo del último marcar/desmarcar en cada dispositivo). Si no hay marca de
+  // tiempo en ninguno de los dos lados (datos viejos, previos a esta versión)
+  // se cae al comportamiento anterior: OR, para no perder progreso ya hecho.
+  function mergeDone(aDone, aAt, bDone, bAt) {
+    aDone = aDone || {}; bDone = bDone || {}; aAt = aAt || {}; bAt = bAt || {};
+    var done = {}, doneAt = {}, cids = {};
+    [aDone, bDone, aAt, bAt].forEach(function (m) {
+      Object.keys(m).forEach(function (k) { cids[k] = 1; });
     });
-    return out;
+    Object.keys(cids).forEach(function (cid) {
+      var ta = aAt[cid] || 0, tb = bAt[cid] || 0;
+      var isDone, at;
+      if (ta === 0 && tb === 0) { isDone = !!aDone[cid] || !!bDone[cid]; at = 0; }
+      else if (ta >= tb) { isDone = !!aDone[cid]; at = ta; }
+      else { isDone = !!bDone[cid]; at = tb; }
+      if (isDone) done[cid] = true;
+      if (at) doneAt[cid] = at;
+    });
+    return { done: done, doneAt: doneAt };
   }
 
   function mergeLog(a, b, remoteNewer) {

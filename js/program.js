@@ -651,7 +651,10 @@
   /* ======================================================================
      Estado
      ====================================================================== */
-  const DEFAULTS = { unit: "kg", startDate: null, rms: {}, done: {}, log: {} };
+  // doneAt: marca de tiempo del último cambio de cada día (marcar/desmarcar).
+  // La usa la sincronización para resolver conflictos por día (last-write-wins),
+  // así desmarcar un día en un dispositivo no se "revierte" solo al sincronizar.
+  const DEFAULTS = { unit: "kg", startDate: null, rms: {}, done: {}, doneAt: {}, log: {} };
   let st = load();
 
   function load() {
@@ -663,9 +666,16 @@
       return Object.assign(base, saved, {
         rms: Object.assign({}, saved.rms),
         done: Object.assign({}, saved.done),
+        doneAt: Object.assign({}, saved.doneAt),
         log: Object.assign({}, saved.log)
       });
     } catch (e) { return base; }
+  }
+
+  // Cambia el estado "hecho" de un día y registra cuándo.
+  function setDone(cid, val) {
+    if (val) st.done[cid] = true; else delete st.done[cid];
+    st.doneAt[cid] = Date.now();
   }
   function save() {
     try { localStorage.setItem(STORE_KEY, JSON.stringify(st)); } catch (e) { /* noop */ }
@@ -1807,7 +1817,7 @@
     const cid = sessionRef.id;
     pauseSessionTimer();
     const total = sessionElapsedMs();
-    st.done[cid] = true;
+    setDone(cid, true);
     const lg = st.log[cid];
     if (lg) {
       if (!lg.date) lg.date = toISO(new Date());
@@ -1819,10 +1829,10 @@
     go("calendar");
   }
 
-  function toggleDone(cid) { st.done[cid] = !st.done[cid]; save(); render(); }
+  function toggleDone(cid) { setDone(cid, !st.done[cid]); save(); render(); }
 
   function resetProgress() {
-    st.done = {}; st.log = {};
+    st.done = {}; st.doneAt = {}; st.log = {};
     confirmingReset = false;
     save();
     toast("Progreso reiniciado");
@@ -1961,6 +1971,7 @@
       st = Object.assign(base, incoming, {
         rms: Object.assign({}, incoming.rms),
         done: Object.assign({}, incoming.done),
+        doneAt: Object.assign({}, incoming.doneAt),
         log: Object.assign({}, incoming.log)
       });
       save();
