@@ -94,6 +94,7 @@
   }
   function save() {
     try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch (e) { /* noop */ }
+    if (window.AppGymSync && !window.AppGymSync.applying) window.AppGymSync.onLocalChange();
   }
 
   function uid() {
@@ -1638,7 +1639,21 @@
     toast: toast,
     sound: sound,
     startWodById: startWodById,
-    startWod: startWod
+    startWod: startWod,
+    // ---- puentes para la sincronización entre dispositivos (js/sync.js) ----
+    exportState: function () { return JSON.parse(JSON.stringify(state)); },
+    importState: function (incoming) {
+      if (!incoming || typeof incoming !== "object") return;
+      state = deepMerge(JSON.parse(JSON.stringify(DEFAULTS)), incoming);
+      save();
+      try {
+        renderCounter();
+        renderHistory();
+        renderRoutines();
+        applyTheme();
+        setIcon($("#btnSound"), state.sound ? "sound-on" : "sound-off");
+      } catch (e) { /* noop: el DOM puede no estar listo aún */ }
+    }
   };
 
   document.addEventListener("DOMContentLoaded", init);

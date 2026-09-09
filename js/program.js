@@ -667,7 +667,10 @@
       });
     } catch (e) { return base; }
   }
-  function save() { try { localStorage.setItem(STORE_KEY, JSON.stringify(st)); } catch (e) { /* noop */ } }
+  function save() {
+    try { localStorage.setItem(STORE_KEY, JSON.stringify(st)); } catch (e) { /* noop */ }
+    if (window.AppGymSync && !window.AppGymSync.applying) window.AppGymSync.onLocalChange();
+  }
 
   /* ======================================================================
      Unidades y pesos de trabajo
@@ -1949,6 +1952,27 @@
   else init();
 
   window.AppGymProgram = {
-    reset: function () { st = JSON.parse(JSON.stringify(DEFAULTS)); save(); screen = "onboarding"; render(); }
+    reset: function () { st = JSON.parse(JSON.stringify(DEFAULTS)); save(); screen = "onboarding"; render(); },
+    // ---- puentes para la sincronización entre dispositivos (js/sync.js) ----
+    exportState: function () { return JSON.parse(JSON.stringify(st)); },
+    importState: function (incoming) {
+      if (!incoming || typeof incoming !== "object") return;
+      var base = JSON.parse(JSON.stringify(DEFAULTS));
+      st = Object.assign(base, incoming, {
+        rms: Object.assign({}, incoming.rms),
+        done: Object.assign({}, incoming.done),
+        log: Object.assign({}, incoming.log)
+      });
+      save();
+      // No re-renderizamos en medio de una sesión activa: el estado queda
+      // actualizado y la vista lo toma al salir. En cualquier otra pantalla,
+      // refrescamos.
+      try {
+        if (screen !== "session") {
+          screen = hasAllRMs() ? "calendar" : "onboarding";
+          render();
+        }
+      } catch (e) { /* noop */ }
+    }
   };
 })();
