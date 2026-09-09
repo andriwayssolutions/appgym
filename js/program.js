@@ -977,6 +977,7 @@
   let warmupInfoOpen = null;     // índice del ítem con la explicación abierta
   let sessionTimeEdit = false;
   let sessionTimeConfirmReset = false;
+  let confirmingClearSets = false;   // confirmación de "vaciar series del día"
 
   function root() { return $("#view-program"); }
 
@@ -984,6 +985,7 @@
     if (screen === "session" && next !== "session") leaveSession();
     editing = null;
     confirmingReset = false;
+    confirmingClearSets = false;
     finManual = null;
     sessionTimeEdit = false;
     sessionTimeConfirmReset = false;
@@ -1534,7 +1536,14 @@
       clockRow +
       warmupBlock(s) +
       '<div class="pg-note"><span data-icon="clock"></span> ' + esc(s.note) + "</div>" +
-      '<button class="pg-link pg-fill-link" id="pgFillAll">Completar las series que falten con lo pautado</button>' +
+      '<div class="pg-day-actions">' +
+        '<button class="pg-link pg-fill-link" id="pgFillAll">Completar las series que falten con lo pautado</button>' +
+        (confirmingClearSets
+          ? '<span class="pg-clear-confirm">¿Vaciar todas las series del día? ' +
+            '<button class="pg-link" id="pgClearDayYes">Sí, vaciar</button> · ' +
+            '<button class="pg-link" id="pgClearDayNo">No</button></span>'
+          : '<button class="pg-link pg-clear-link" id="pgClearDay">Vaciar las series del día</button>') +
+      '</div>' +
       groupsHtml +
       '<h3 class="pg-section-h">Finishers</h3>' +
       finHtml +
@@ -1765,6 +1774,18 @@
     render();
   }
 
+  // Borra todas las series cargadas del día (no toca warmup, finishers ni el
+  // cronómetro). save() sella el _mAt → el borrado se sincroniza al otro equipo.
+  function clearDaySets() {
+    const lg = sessionLog();
+    lg.sets = {};
+    confirmingClearSets = false;
+    editing = null;
+    save();
+    toast("Series del día vaciadas");
+    render();
+  }
+
   function saveDayNote(val) {
     const lg = sessionLog();
     lg.note = String(val || "").trim();
@@ -1883,6 +1904,9 @@
     if (t.closest("#pgSessionResetNo")) { sessionTimeConfirmReset = false; render(); return; }
     if (t.closest("#pgSessionResetYes")) { resetSessionTime(); return; }
     if (t.closest("#pgFillAll")) { fillPrescribed(); return; }
+    if (t.closest("#pgClearDay")) { confirmingClearSets = true; render(); return; }
+    if (t.closest("#pgClearDayNo")) { confirmingClearSets = false; render(); return; }
+    if (t.closest("#pgClearDayYes")) { clearDaySets(); return; }
     if (t.closest("#pgStartChallenge")) { startChallenge(); return; }
     if (t.closest("#pgWuToggle")) { warmupCollapsed = !warmupCollapsed; render(); return; }
     const wuInfo = t.closest("[data-wuinfo]");

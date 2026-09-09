@@ -1465,6 +1465,12 @@ body.light .tab.is-active {
 
 .pg-fill-link { align-self: flex-start; font-size: 0.8rem; margin-top: -2px; }
 
+.pg-day-actions { display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: baseline; }
+.pg-clear-link { font-size: 0.8rem; color: var(--text-muted); text-decoration: underline; }
+.pg-clear-confirm { font-size: 0.8rem; color: var(--text-muted); }
+.pg-clear-confirm .pg-link { font-size: inherit; }
+.pg-clear-confirm #pgClearDayYes { color: var(--danger); }
+
 .pg-note-field { margin-bottom: 0; margin-top: 4px; }
 .pg-note-field textarea {
   width: 100%; resize: vertical; min-height: 44px;
