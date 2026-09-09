@@ -362,7 +362,10 @@
       ".sync-line i{width:8px;height:8px;border-radius:50%;background:var(--text-faint);flex:none}",
       ".sync-line.synced i{background:var(--success)}",
       ".sync-line.syncing i,.sync-line.pending i{background:var(--accent)}",
-      ".sync-line.error i{background:var(--danger)}"
+      ".sync-line.error i{background:var(--danger)}",
+      ".sync-fine{margin:10px 0 0;font-size:11.5px;text-align:center}",
+      ".sync-fine a{color:var(--text-faint);text-decoration:none}",
+      ".sync-fine a:hover{color:var(--text-muted);text-decoration:underline}"
     ].join("");
     var st = document.createElement("style");
     st.id = "syncStyles";
@@ -460,7 +463,8 @@
       p.innerHTML =
         "<h4>Sincronizá tu progreso</h4>" +
         "<p>Entrá con Google para tener tus entrenamientos y tu programa en todos tus dispositivos. Sin login, la app sigue funcionando sólo en este equipo.</p>" +
-        "<button class='primary' id='syncSignIn'>Entrar con Google</button>";
+        "<button class='primary' id='syncSignIn'>Entrar con Google</button>" +
+        "<p class='sync-fine'><a href='privacy.html' target='_blank' rel='noopener'>Política de privacidad</a></p>";
       var b = document.getElementById("syncSignIn");
       if (b) b.addEventListener("click", signIn);
       return;
@@ -473,7 +477,8 @@
       "<div class='sync-line " + lineCls + "'><i></i><span>" + (STATUS_TEXT[status] || status) + "</span></div>" +
       (meta.lastSyncAt ? "<p style='margin-top:4px'>Última sync: " + fmtAgo(meta.lastSyncAt) + "</p>" : "<p style='margin-top:4px'>&nbsp;</p>") +
       "<button id='syncNow'" + (status === "syncing" ? " disabled" : "") + ">Sincronizar ahora</button>" +
-      "<button id='syncOut'>Cerrar sesión</button>";
+      "<button id='syncOut'>Cerrar sesión</button>" +
+      "<p class='sync-fine'><a href='privacy.html' target='_blank' rel='noopener'>Política de privacidad</a></p>";
     var n = document.getElementById("syncNow");
     if (n) n.addEventListener("click", function () { scheduleSync(0, "manual"); });
     var o = document.getElementById("syncOut");

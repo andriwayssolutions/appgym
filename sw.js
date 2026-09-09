@@ -7,7 +7,7 @@
    - Supabase ............ nunca se toca (auth y datos siempre en vivo)
    Subir V en cada deploy (junto con el ?v=N de index.html) para renovar caché.
    ========================================================================== */
-const V = "28";
+const V = "29";
 const CACHE = "appgym-" + V;
 const CORE = [
   "./",
